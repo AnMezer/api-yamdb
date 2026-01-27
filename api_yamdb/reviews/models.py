@@ -22,7 +22,7 @@ class Category(NameSlugBaseModel):
 class Genre(NameSlugBaseModel):
 
     class Meta:
-        verbose_name = 'жанр',
+        verbose_name = 'жанр'
         verbose_name_plural = 'жанры'
 
 
