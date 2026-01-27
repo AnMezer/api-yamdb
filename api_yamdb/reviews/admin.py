@@ -29,3 +29,4 @@ class TitlesAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'rating', 'description',)
     list_filter = ('year', 'rating', 'genre', 'category')
     search_fields = ('name', 'slug')
+    #filter_horizontal = ('genre', 'category')

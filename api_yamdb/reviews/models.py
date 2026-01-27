@@ -32,7 +32,7 @@ class Title(models.Model):
     rating = models.PositiveSmallIntegerField(default=1)  # Заглушка, нужно сделать расчет рейтинга из модели Review
     description = models.TextField('Описание', blank=True)
     genre = models.ManyToManyField(Genre, related_name='genres')
-    category = models.ManyToManyField(Genre, related_name='categories')
+    category = models.ManyToManyField(Category, related_name='categories')
 
     class Meta:
         verbose_name = 'произведение'
