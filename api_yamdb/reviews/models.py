@@ -1,8 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from constants.constants import USERS_ROLES
-from constants.constants import CHAR_FIELD_LENGTH
+from constants.constants import USERS_ROLES, CHAR_FIELD_LENGTH
 from .base_models import NameSlugBaseModel
 
 
@@ -31,8 +30,8 @@ class Title(models.Model):
     year = models.PositiveSmallIntegerField()
     rating = models.PositiveSmallIntegerField(default=1)  # Заглушка, нужно сделать расчет рейтинга из модели Review
     description = models.TextField('Описание', blank=True)
-    genre = models.ManyToManyField(Genre, related_name='genres')
-    category = models.ManyToManyField(Category, related_name='categories')
+    genre = models.ManyToManyField(Genre, related_name='title_genres')
+    category = models.ManyToManyField(Category, related_name='title_categories')
 
     class Meta:
         verbose_name = 'произведение'
