@@ -68,15 +68,15 @@ class Review(models.Model):
     """Класс для работы с отзывами на произведения."""
 
     text = models.TextField()
-    author_id = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='review_author')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='reviews')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     # Оценка произведению - целое число от 1 до 10.
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
     # На одно произведение пользователь может оставить только один отзыв!
     title_id = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='review')
+        Title, on_delete=models.CASCADE, related_name='reviews')
 
     class Meta:
         ordering = ('-pub_date', )
@@ -91,11 +91,11 @@ class Comment(models.Model):
     """Класс для работы с комментариями на отзывы пользователей."""
 
     text = models.TextField()
-    author_id = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comment_author')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='comments')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     review_id = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comment')
+        Review, on_delete=models.CASCADE, related_name='comments')
 
     class Meta:
         ordering = ('-pub_date', )

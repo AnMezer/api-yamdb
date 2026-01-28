@@ -1,7 +1,7 @@
 from django.forms import SlugField
 from rest_framework import serializers
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review, Comment
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -11,6 +11,7 @@ class CategorySerializer(serializers.ModelSerializer):
         - name
         - slug
     """
+
     class Meta:
         fields = ('name', 'slug')
         model = Category
@@ -18,12 +19,13 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class GenreSerializer(serializers.ModelSerializer):
-    """Сериализатор для категорий.
+    """Сериализатор для жанров.
 
     Поля:
         - name
         - slug
     """
+
     class Meta:
         fields = ('name', 'slug')
         model = Genre
@@ -31,8 +33,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для произведений.
-    """
+    """Сериализатор для произведений."""
+
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
 
@@ -40,3 +42,23 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = '__all__'
         model = Title
         read_only_fields = ('id', 'rating')
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Сериализатор для отзывов к произведениям."""
+
+    author = serializers.StringRelatedField(source='author.username')
+
+    class Meta:
+        fields = ('id', 'text', 'author', 'pub_date', 'score', 'title_id')
+        model = Review
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Сериализатор для комментариев к отзывам."""
+
+    author = serializers.StringRelatedField(source='author.username')
+
+    class Meta:
+        fields = ('id', 'text', 'author', 'pub_date', 'review_id')
+        model = Comment
