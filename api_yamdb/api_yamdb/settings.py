@@ -14,8 +14,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-ADMIN_ROLE = 3
-MODERATOR_ROLE = 2
+ADMIN_ROLE = USERS_ROLES[2][0]
+MODERATOR_ROLE = [1][0]
 # Application definition
 
 INSTALLED_APPS = [
@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'api',
     'reviews',
-    'djoser',
+    'djoser'
     'rest_framework_simplejwt',
 ]
 
