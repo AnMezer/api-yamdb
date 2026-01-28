@@ -34,7 +34,7 @@ class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для произведений.
     """
     genre = GenreSerializer(many=True)
-    category = CategorySerializer(many=True)
+    category = CategorySerializer()
 
     class Meta:
         fields = '__all__'
