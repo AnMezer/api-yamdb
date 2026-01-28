@@ -23,7 +23,7 @@ class User(AbstractUser):
     def clean_username(self):
         username = self.cleaned_data.get('username')
 
-        if username.lower == FORBIDDEN_USERNAME:
+        if username.lower() == FORBIDDEN_USERNAME:
             raise ValidationError('Данное имя пользователя запрещено')
 
         return username
