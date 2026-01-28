@@ -1,9 +1,27 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404, render
+from rest_framework import permissions, viewsets
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 from reviews.models import Category, Genre, Title
 from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
+
+User = get_user_model()
+
+
+class TokenViewSet(TokenObtainPairView, TokenRefreshView):
+    pass
+    #queryset = User.objects.all()
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    pass
+    # queryset = User.objects.all()
+    # permission_classes = (permissions.IsAuthenticated)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

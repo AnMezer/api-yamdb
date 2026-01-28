@@ -1,4 +1,7 @@
+from datetime import timedelta
 from pathlib import Path
+
+from constants.constants import USERS_ROLES
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,7 +14,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-
+ADMIN_ROLE = USERS_ROLES[2][0]
+MODERATOR_ROLE = USERS_ROLES[1][0]
 # Application definition
 
 INSTALLED_APPS = [
@@ -24,7 +28,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'api',
     'reviews',
-    'djoser',
+    'djoser'
+    'rest_framework_simplejwt',
 ]
 
 AUTH_USER_MODEL = 'reviews.User'
@@ -95,6 +100,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # Internationalization
