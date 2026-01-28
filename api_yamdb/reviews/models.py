@@ -51,8 +51,11 @@ class Title(models.Model):
     year = models.PositiveSmallIntegerField()
     rating = models.PositiveSmallIntegerField(default=1)  # Заглушка, нужно сделать расчет рейтинга из модели Review
     description = models.TextField('Описание', blank=True)
-    genre = models.ManyToManyField(Genre, related_name='title_genres')
-    category = models.ManyToManyField(Category, related_name='title_categories')
+    genre = models.ManyToManyField(Genre, related_name='titles')
+    category = models.ForeignKey(Category,
+                                 on_delete=models.SET_NULL,
+                                 related_name='titles',
+                                 null=True)
 
     class Meta:
         verbose_name = 'произведение'
