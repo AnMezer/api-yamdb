@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from reviews.models import Category
+from reviews.models import Category, Genre
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -10,10 +10,20 @@ class CategorySerializer(serializers.ModelSerializer):
         - name
         - slug
     """
-    #author = serializers.SlugRelatedField(slug_field='username',
-    #                                      read_only=True)
-
     class Meta:
         fields = ('name', 'slug')
         model = Category
+        read_only_fields = ('name', 'slug')
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    """Сериализатор для категорий.
+
+    Поля:
+        - name
+        - slug
+    """
+    class Meta:
+        fields = ('name', 'slug')
+        model = Genre
         read_only_fields = ('name', 'slug')
