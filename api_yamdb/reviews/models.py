@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -17,7 +18,7 @@ class User(AbstractUser):
     role = models.IntegerField(
         'Роль',
         choices=USERS_ROLES,
-        default=USERS_ROLES[0][0],
+        default=settings.USER_ROLE,
         blank=True
     )
 
@@ -28,6 +29,14 @@ class User(AbstractUser):
             raise ValidationError('Данное имя пользователя запрещено')
 
         return username
+
+    @property
+    def is_admin(self):
+        return self.role == settings.ADMIN_ROLE or self.is_superuser
+    
+    @property
+    def is_moder(self):
+        return self.role == settings.ADMIN_ROLE or settings.MODERATOR_ROLE
 
     def __str__(self):
         return self.username
