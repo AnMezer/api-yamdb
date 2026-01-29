@@ -51,7 +51,7 @@ class Title(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
     year = models.PositiveSmallIntegerField()
     # Заглушка, нужно сделать расчет рейтинга из модели Review
-    rating = models.PositiveSmallIntegerField(default=1)
+    rating = models.PositiveSmallIntegerField(default=None)
     description = models.TextField('Описание', blank=True)
     genre = models.ManyToManyField(Genre, related_name='titles')
     category = models.ForeignKey(Category,
@@ -62,6 +62,9 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'произведение'
         verbose_name_plural = 'произведения'
+
+    def __str__(self):
+        return f'{self.name} ({self.year})'
 
 
 class Review(models.Model):
@@ -75,7 +78,7 @@ class Review(models.Model):
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
     # На одно произведение пользователь может оставить только один отзыв!
-    title_id = models.ForeignKey(
+    title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
     class Meta:
