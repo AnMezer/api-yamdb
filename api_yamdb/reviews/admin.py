@@ -36,11 +36,11 @@ class TitlesAdmin(admin.ModelAdmin):
 class ReviewAdmin(admin.ModelAdmin):
     list_display = ('id', 'text', 'author', 'pub_date', 'score', 'title_id')
     search_fields = ('text', )
-    list_filter = ('author_id', 'pub_date', 'score', 'title_id')
+    list_filter = ('author', 'pub_date', 'score', 'title_id')
 
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('id', 'text', 'author', 'pub_date', 'review_id')
     search_fields = ('text', )
-    list_filter = ('author_id', 'pub_date', 'review_id')
+    list_filter = ('author', 'pub_date', 'review_id')

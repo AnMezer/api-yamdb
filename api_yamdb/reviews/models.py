@@ -81,7 +81,7 @@ class Review(models.Model):
     class Meta:
         ordering = ('-pub_date', )
         verbose_name = 'отзыв'
-        verbose_name_plural = 'Отзывы'
+        verbose_name_plural = 'отзывы'
 
     def __str__(self):
         return self.text
@@ -100,7 +100,7 @@ class Comment(models.Model):
     class Meta:
         ordering = ('-pub_date', )
         verbose_name = 'комментарий'
-        verbose_name_plural = 'Комментарии'
+        verbose_name_plural = 'комментарии'
 
     def __str__(self):
         return self.text
