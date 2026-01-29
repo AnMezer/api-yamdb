@@ -14,9 +14,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-ADMIN_ROLE = 3
-MODERATOR_ROLE = 2
-USER_ROLE = 1
+ADMIN_ROLE = USERS_ROLES[2][0]
+MODERATOR_ROLE = USERS_ROLES[1][0]
 # Application definition
 
 INSTALLED_APPS = [
@@ -106,7 +105,6 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'TOKEN_OBTAIN_SERIALIZER': 'api.serializers.TokenSerializer',
 }
 
 # Internationalization
