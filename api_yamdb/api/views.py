@@ -56,8 +56,8 @@ class TitleViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для работы с отзывами на произведения."""
 
-    qeuryset = Review.objects.all()
-    serializer_class = ReviewSerializer()
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes =
 
@@ -66,6 +66,6 @@ class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для работы с комментариями на отзывы."""
 
     queryset = Comment.objects.all()
-    serializer_class = CommentSerializer()
+    serializer_class = CommentSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes =
