@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -64,7 +63,7 @@ class Title(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
     year = models.PositiveSmallIntegerField()
     # Заглушка, нужно сделать расчет рейтинга из модели Review
-    rating = models.PositiveSmallIntegerField(default=1)
+    rating = models.PositiveSmallIntegerField(default=None)
     description = models.TextField('Описание', blank=True)
     genre = models.ManyToManyField(Genre, related_name='titles')
     category = models.ForeignKey(Category,
@@ -76,25 +75,28 @@ class Title(models.Model):
         verbose_name = 'произведение'
         verbose_name_plural = 'произведения'
 
+    def __str__(self):
+        return f'{self.name} ({self.year})'
+
 
 class Review(models.Model):
     """Класс для работы с отзывами на произведения."""
 
     text = models.TextField()
-    author_id = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='review_author')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='reviews')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     # Оценка произведению - целое число от 1 до 10.
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
     # На одно произведение пользователь может оставить только один отзыв!
-    title_id = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='review')
+    title = models.ForeignKey(
+        Title, on_delete=models.CASCADE, related_name='reviews')
 
     class Meta:
         ordering = ('-pub_date', )
         verbose_name = 'отзыв'
-        verbose_name_plural = 'Отзывы'
+        verbose_name_plural = 'отзывы'
 
     def __str__(self):
         return self.text
@@ -104,16 +106,16 @@ class Comment(models.Model):
     """Класс для работы с комментариями на отзывы пользователей."""
 
     text = models.TextField()
-    author_id = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comment_author')
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='comments')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     review_id = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comment')
+        Review, on_delete=models.CASCADE, related_name='comments')
 
     class Meta:
         ordering = ('-pub_date', )
         verbose_name = 'комментарий'
-        verbose_name_plural = 'Комментарии'
+        verbose_name_plural = 'комментарии'
 
     def __str__(self):
         return self.text
