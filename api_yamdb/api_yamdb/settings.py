@@ -1,8 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 
-from constants.constants import USERS_ROLES
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,8 +12,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-ADMIN_ROLE = USERS_ROLES[2][0]
-MODERATOR_ROLE = USERS_ROLES[1][0]
 # Application definition
 
 INSTALLED_APPS = [

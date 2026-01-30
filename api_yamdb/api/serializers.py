@@ -1,7 +1,11 @@
+from django.contrib.auth import get_user_model
 from django.forms import SlugField
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from reviews.models import Category, Genre, Title, Review, Comment
+
+User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -42,6 +46,41 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = '__all__'
         model = Title
         read_only_fields = ('id', 'rating')
+
+
+class BaseUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+
+class UserSerializer(BaseUserSerializer):
+    """Сериализатор для пользователей."""
+    class Meta(BaseUserSerializer.Meta):
+        fields = (BaseUserSerializer.Meta.fields
+            + ['first_name', 'last_name', 'bio', 'role']
+        )
+
+
+class SignUpSerializer(serializers.ModelSerializer):
+    class Meta(BaseUserSerializer.Meta):
+        pass
+
+
+class TokenSerializer(TokenObtainPairSerializer):
+    #confirmation_code = default_token_generator.check_token()
+
+    class Meta:
+        fields = ('username', 'confirmation_code')
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims
+        #token['name'] = user.name
+        # ...
+
+        return token
 
 
 class ReviewSerializer(serializers.ModelSerializer):
