@@ -18,7 +18,7 @@ class User(AbstractUser):
     role = models.IntegerField(
         'Роль',
         choices=USERS_ROLES,
-        default=list(USERS_ROLES.keys())[0],
+        default=settings.USER_ROLE,
         blank=True
     )
 

@@ -1,8 +1,10 @@
+from django.conf import settings
+
 FIRST_API_VERSION = 'v1'
 USERS_ROLES = {
-    1: 'user',
-    2: 'moderator',
-    3: 'admin'
+    settings.USER_ROLE: 'user',
+    settings.MODERATOR_ROLE: 'moderator',
+    settings.ADMIN_ROLE: 'admin'
 }
 CHAR_FIELD_LENGTH = 256
 SLUG_FIELD_LENGTH = 50
