@@ -1,8 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 
-from constants.constants import USERS_ROLES
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
