@@ -19,22 +19,15 @@ class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
         return (
             request.method in permissions.SAFE_METHODS
             or request.user == obj.author
-            or (
-                User.objects.get(username=request.user).values('role')
-                == settings.MODERATOR_ROLE
-            )
+            or request.user.is_moder
         )
 
 
 class AdminOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        return (
-            User.objects.get(username=request.user).values('role')
-            == settings.ADMIN_ROLE
-        )
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.is_admin
 
     def has_object_permission(self, request, view, obj):
-        return (
-            User.objects.get(username=request.user).values('role')
-            == settings.ADMIN_ROLE
-        )
+        self.has_permission(request, view)
