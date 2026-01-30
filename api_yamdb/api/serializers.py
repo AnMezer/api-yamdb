@@ -72,7 +72,11 @@ class ReviewSerializer(serializers.ModelSerializer):
 
             score = data.get('score')
             if score is None:
-                raise serializers.ValidationError('Необходимо указать оценку!')
+                raise serializers.ValidationError(
+                    'Необходимо указать оценку!')
+            elif not isinstance(score, int):
+                raise serializers.ValidationError(
+                    'Оценка должна быть целым числом.')
             elif score < 1 or score > 10:
                 raise serializers.ValidationError(
                     'Оценка должна быть целым числом от 1 до 10.')
