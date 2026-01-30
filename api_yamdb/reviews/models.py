@@ -8,18 +8,22 @@ from .base_models import NameSlugBaseModel
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
-    USERS_ROLES
 )
 
 
 class User(AbstractUser):
+    class Role(models.TextChoices):
+        USER = 'user'
+        ADMIN = 'admin'
+        MODER = 'moderator'
     email = models.EmailField(unique=True)
     bio = models.TextField('Биография', blank=True)
-    role = models.IntegerField(
+    role = models.CharField(
         'Роль',
-        choices=USERS_ROLES,
-        default=settings.USER_ROLE,
-        blank=True
+        choices=Role,
+        default=Role.USER,
+        blank=True,
+        max_length=10
     )
 
     def clean_username(self):
@@ -32,11 +36,11 @@ class User(AbstractUser):
 
     @property
     def is_admin(self):
-        return self.role == settings.ADMIN_ROLE or self.is_superuser
-    
+        return self.role == self.Role.ADMIN or self.is_superuser
+
     @property
     def is_moder(self):
-        return self.role == settings.ADMIN_ROLE or settings.MODERATOR_ROLE
+        return self.role == self.Role.ADMIN or self.Role.MODER
 
     def __str__(self):
         return self.username

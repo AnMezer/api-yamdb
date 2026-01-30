@@ -12,9 +12,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-ADMIN_ROLE = 3
-MODERATOR_ROLE = 2
-USER_ROLE = 1
 # Application definition
 
 INSTALLED_APPS = [
