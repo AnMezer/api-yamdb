@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import permissions
 
+from constants.constants import USERS_ROLES
+
 User = get_user_model()
 
 
@@ -16,15 +18,22 @@ class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
         return (
             request.method in permissions.SAFE_METHODS
             or request.user == obj.author
-            or request.user.is_moder
+            or (
+                User.objects.get(username=request.user).values('role')
+                == settings.MODERATOR_ROLE
+            )
         )
 
 
 class AdminOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return request.user.is_admin
+        return (
+            User.objects.get(username=request.user).values('role')
+            == settings.ADMIN_ROLE
+        )
 
     def has_object_permission(self, request, view, obj):
-        self.has_permission(request, view)
+        return (
+            User.objects.get(username=request.user).values('role')
+            == settings.ADMIN_ROLE
+        )

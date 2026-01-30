@@ -7,15 +7,17 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from reviews.models import Category, Genre, Title
-from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
+from reviews.models import Category, Genre, Title, Review, Comment
+from .serializers import (CategorySerializer, GenreSerializer,
+                          TitleSerializer, ReviewSerializer, CommentSerializer)
+
 
 User = get_user_model()
 
 
 class TokenViewSet(TokenObtainPairView, TokenRefreshView):
     pass
-    #queryset = User.objects.all()
+    # queryset = User.objects.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -25,8 +27,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с категориями.
-    """
+    """Вьюсет для работы с категориями."""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
@@ -34,8 +36,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class GenreViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с категориями.
-    """
+    """Вьюсет для работы с жанрами."""
+
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     pagination_class = LimitOffsetPagination
@@ -43,9 +45,27 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с категориями.
-    """
+    """Вьюсет для работы с произведениями."""
+
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с отзывами на произведения."""
+
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    pagination_class = LimitOffsetPagination
+    # permission_classes =
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с комментариями на отзывы."""
+
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    pagination_class = LimitOffsetPagination
+    # permission_classes =
