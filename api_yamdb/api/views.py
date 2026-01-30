@@ -1,6 +1,7 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, render
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, request
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -8,18 +9,46 @@ from rest_framework_simplejwt.views import (
 )
 
 from reviews.models import Category, Genre, Title
-from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
+from .permissions import AdminOnly
+from .serializers import (
+    CategorySerializer,
+    GenreSerializer,
+    TitleSerializer,
+    UserSerializer,
+    SignUpSerializer
+)
 
 User = get_user_model()
 
 
-class TokenViewSet(TokenObtainPairView, TokenRefreshView):
+class TokenView(TokenObtainPairView):
+    #def post():
     pass
     #queryset = User.objects.all()
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    pass
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    # @action()
+    # def get():
+    #     pass
+    
+    def get_serializer_class(self):
+        if self.basename == 'users':
+            return UserSerializer
+        else:
+            return SignUpSerializer
+
+    def get_permissions(self):
+        if self.basename == 'signup_user':
+            return (permissions.AllowAny(),)
+        elif self.basename == 'users_me':
+            return (permissions.IsAuthenticated,)
+        else:
+            return (AdminOnly(),)
+
     # queryset = User.objects.all()
     # permission_classes = (permissions.IsAuthenticated)
 
