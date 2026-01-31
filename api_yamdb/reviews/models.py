@@ -51,11 +51,7 @@ class Title(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
     year = models.PositiveSmallIntegerField()
     # Заглушка, нужно сделать расчет рейтинга из модели Review
-<<<<<<< Updated upstream
-    rating = models.PositiveSmallIntegerField(default=1)
-=======
     rating = models.PositiveSmallIntegerField(default=None, null=True)
->>>>>>> Stashed changes
     description = models.TextField('Описание', blank=True)
     genre = models.ManyToManyField(Genre, related_name='titles')
     category = models.ForeignKey(Category,
