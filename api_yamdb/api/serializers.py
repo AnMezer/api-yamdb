@@ -3,6 +3,7 @@ from django.forms import SlugField
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from constants.constants import FORBIDDEN_USERNAME
 from reviews.models import Category, Genre, Title, Review, Comment
 
 User = get_user_model()
@@ -53,6 +54,18 @@ class BaseUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'email']
 
+    def validate_username(self, value):
+        username = value
+
+        if username.lower() == FORBIDDEN_USERNAME:
+            raise serializers.ValidationError(
+                {
+                    'detail': 'Данное имя пользователя запрещено.'
+                }
+            )
+
+        return value
+
 
 class UserSerializer(BaseUserSerializer):
     """Сериализатор для пользователей."""
@@ -62,7 +75,7 @@ class UserSerializer(BaseUserSerializer):
         )
 
 
-class SignUpSerializer(serializers.ModelSerializer):
+class SignUpSerializer(BaseUserSerializer):
     class Meta(BaseUserSerializer.Meta):
         pass
 

@@ -22,7 +22,7 @@ class User(AbstractUser):
         choices=Role,
         default=Role.USER,
         blank=True,
-        max_length=10
+        max_length=CHAR_FIELD_LENGTH
     )
 
     def clean_username(self):
