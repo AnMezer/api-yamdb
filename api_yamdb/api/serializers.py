@@ -1,9 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.forms import SlugField
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from django.core.validators import RegexValidator
+
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from reviews.models import Category, Genre, Title, Review, Comment
+from constants.constants import (SLUG_FIELD_LENGTH,
+                                 REGEX_STAMP,
+                                 CHAR_FIELD_LENGTH)
 
 User = get_user_model()
 
@@ -15,11 +21,19 @@ class CategorySerializer(serializers.ModelSerializer):
         - name
         - slug
     """
+    slug = serializers.SlugField(
+        max_length=SLUG_FIELD_LENGTH,
+        validators=[
+            RegexValidator(regex=REGEX_STAMP,
+                           message=f'Для slug можно использовать только символы {REGEX_STAMP}'),
+            UniqueValidator(queryset=Category.objects.all(),
+                            message='Категория с таким slug уже существует.')
+        ]
+    )
 
     class Meta:
         fields = ('name', 'slug')
         model = Category
-        read_only_fields = ('name', 'slug')
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -29,6 +43,14 @@ class GenreSerializer(serializers.ModelSerializer):
         - name
         - slug
     """
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+    slug = serializers.SlugField(
+        max_length=SLUG_FIELD_LENGTH,
+        validators=[
+            UniqueValidator(queryset=Category.objects.all(),
+                            message='Категория с таким slug уже существует.'),
+        ]
+    )
 
     class Meta:
         fields = ('name', 'slug')

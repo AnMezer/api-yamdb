@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, render
-from rest_framework import permissions, viewsets, request
+from rest_framework import permissions, viewsets, request, filters
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -61,7 +61,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    # permission_classes
+    permission_classes = (AdminOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
 class GenreViewSet(viewsets.ModelViewSet):
