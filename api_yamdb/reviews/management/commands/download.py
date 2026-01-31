@@ -4,10 +4,12 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.db import connection, transaction
 from django.apps import apps
 from datetime import datetime
+from django.db.models.base import ModelBase
 
-from reviews.models import Category, Genre, Title, User
+
+from reviews.models import User
 from .exceptions import ModelNotFound, CantDeleteData
-from constants.constants import USERS_ROLES
+
 
 # Запуск из корня проекта:
 # python .\api_yamdb\manage.py download api_yamdb/static/data --reviews --clean
@@ -30,6 +32,13 @@ IMPORT_QUEUE = [
 # Таблицы в БД связывающие ManyToManyFields
 M2M_TABLES = ['title_genre']
 
+SUPERUSER = {
+    'username': 'admin',
+    'email': 'admin@admin.ru',
+    'password': 'admin',
+    'role': 3
+}
+
 
 class Command(BaseCommand):
     help = 'Импорт данных из CSV файла в базу данных приложения'
@@ -45,7 +54,7 @@ class Command(BaseCommand):
         parser.add_argument('--createsuperuser', action='store_true',
                             help='Добавить аккаунт суперюзера')
 
-    def check_files(self, path):
+    def check_files(self, path: str) -> None:
         """Проверяет наличие файлов в папке
 
         Args:
@@ -63,7 +72,7 @@ class Command(BaseCommand):
             error_message = f'Файл(ы) не найден(ы): {", ".join(not_exist_files)}'
             raise FileNotFoundError(error_message)
 
-    def get_model(self, app, table):
+    def get_model(self, app: str, table: str) -> ModelBase:
         """Возвращает модель приложения по названию таблицы
 
         Args:
@@ -81,7 +90,8 @@ class Command(BaseCommand):
                 f'Ошибка при поиске модели {table} в приложении {app}. {e}')
             raise ModelNotFound(error_message)
 
-    def clean_row(self, row: dict, table: str):
+    def clean_row(
+            self, row: dict, table: str) -> dict[str, str | int | None] | None:
         """Проверяет на корректность значения полей
 
         Args:
@@ -94,15 +104,8 @@ class Command(BaseCommand):
         cleaned_row: dict[str, str | int | None] = {}
         for field, value in row.items():
 
-            if field == 'role':
-                ROLE_MAP = {role: id for id, role in USERS_ROLES}
-                if value in ROLE_MAP:
-                    cleaned_row[field] = ROLE_MAP[value]
-                else:
-                    return None
-
             # Проверяем, что значения полей ForeignKey можно привести к int
-            elif field.endswith('_id'):
+            if field.endswith('_id'):
                 try:
                     cleaned_row[field] = int(value)
                 except Exception:
@@ -124,37 +127,67 @@ class Command(BaseCommand):
 
         return cleaned_row
 
-    def delete_table(self, table, app):
+    def delete_table(self, table: str, app: str) -> None:
+        """Очищает таблицу в приложении, сохраняя структуру
+
+        Args:
+            table: Название таблицы
+            app: Название приложения
+
+        Raises:
+            CantDeleteData: В случае ошибки при удалении.
+        """
         table_name = f'{app}_{table}'
         querys = [
+            # Очищает данные в таблице
             f'DELETE FROM {table_name}',
+
+            # Обнуляет счетчик id, ранее использованные можно применять снова
             f"DELETE FROM sqlite_sequence WHERE name='{table_name}'"
         ]
         try:
             for query in querys:
                 with connection.cursor() as cursor:
                     cursor.execute(query)
+            self.stdout.write(self.style.NOTICE(f'Таблица {table_name} очищена'))
         except Exception as e:
             raise CantDeleteData(f'Ошибка при очистке таблицы {table}: {e}')
 
-    def delete_data(self, clean, app):
+    def delete_data(self, clean: bool, app: str) -> None:
+        """Последовательно отправляет запрос на очистку таблиц в БД
+
+        Args:
+            clean: Флаг, нужна ли очистка
+            app: Приложение, в котором очищаются таблицы
+        """
         if clean:
+            # Таблицу с логами django тоже чистим, в ней ссылки на User
+            # Без ее очистки не очистить таблицу с пользователями
             self.delete_table('admin_log', 'django')
+
             tables = IMPORT_QUEUE + M2M_TABLES
             for table in reversed(tables):
                 self.delete_table(table, app)
 
-    def add_superuser(self, app, createsuperuser):
+    def add_superuser(self, createsuperuser: bool) -> None:
+        """Добавляет учетку супервользователя
+
+        Args:
+            createsuperuser: флаг - необходимо ли создание записи
+        """
         if createsuperuser:
-            User.objects.create_superuser(
-                username='admin',
-                email='admin@admin.ru',
-                password='admin',
-                role=3
-            )
-            self.stdout.write(self.style.SUCCESS(f'Superuser создан'))
+            User.objects.create_superuser(**SUPERUSER)
+            self.stdout.write(self.style.SUCCESS('superuser создан'))
 
     def handle(self, *args, **options):
+        """Создает записи В БД, импортируя их из CSV файлов.
+        Перед сохранением выполняет валидацию значений полей,
+        Записи с невалидными полями не сохраняются.
+
+        При наличии флагов:
+            --clean - предварительно очищает БД
+            --createsuperuser - создает в БД усетку суперюзера
+        """
         self.check_files(options['path'])
         self.delete_data(options['clean'], options['app'])
 
@@ -202,4 +235,4 @@ class Command(BaseCommand):
                             values = [cleaned_row[key] for key in rows[0].keys()]
                             cursor.execute(query, values)
                 self.stdout.write(self.style.SUCCESS(f'Таблица {table} загружена'))
-        self.add_superuser(options['app'], options['createsuperuser'])
+        self.add_superuser(options['createsuperuser'])
