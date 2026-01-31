@@ -75,7 +75,7 @@ class Review(models.Model):
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
     # На одно произведение пользователь может оставить только один отзыв!
-    title_id = models.ForeignKey(
+    title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
     class Meta:

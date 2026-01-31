@@ -5,8 +5,9 @@ from django.db import connection, transaction
 from django.apps import apps
 from datetime import datetime
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, User
 from .exceptions import ModelNotFound, CantDeleteData
+from constants.constants import USERS_ROLES
 
 # Запуск из корня проекта:
 # python .\api_yamdb\manage.py download api_yamdb/static/data --reviews --clean
@@ -41,6 +42,8 @@ class Command(BaseCommand):
                             help='Разделитель (по уполчанию: , (запятая))')
         parser.add_argument('--clean', action='store_true',
                             help='Очистить таблицы перед записью')
+        parser.add_argument('--createsuperuser', action='store_true',
+                            help='Добавить аккаунт суперюзера')
 
     def check_files(self, path):
         """Проверяет наличие файлов в папке
@@ -91,8 +94,15 @@ class Command(BaseCommand):
         cleaned_row: dict[str, str | int | None] = {}
         for field, value in row.items():
 
+            if field == 'role':
+                ROLE_MAP = {role: id for id, role in USERS_ROLES}
+                if value in ROLE_MAP:
+                    cleaned_row[field] = ROLE_MAP[value]
+                else:
+                    return None
+
             # Проверяем, что значения полей ForeignKey можно привести к int
-            if field.endswith('_id'):
+            elif field.endswith('_id'):
                 try:
                     cleaned_row[field] = int(value)
                 except Exception:
@@ -134,6 +144,16 @@ class Command(BaseCommand):
             for table in reversed(tables):
                 self.delete_table(table, app)
 
+    def add_superuser(self, app, createsuperuser):
+        if createsuperuser:
+            User.objects.create_superuser(
+                username='admin',
+                email='admin@admin.ru',
+                password='admin',
+                role=3
+            )
+            self.stdout.write(self.style.SUCCESS(f'Superuser создан'))
+
     def handle(self, *args, **options):
         self.check_files(options['path'])
         self.delete_data(options['clean'], options['app'])
@@ -153,6 +173,7 @@ class Command(BaseCommand):
                             cleaned_row = self.clean_row(row, table)
                             if cleaned_row:
                                 model.objects.create(**cleaned_row)
+                self.stdout.write(self.style.SUCCESS(f'Таблица {table} загружена'))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'{e}'))
 
@@ -180,3 +201,5 @@ class Command(BaseCommand):
                         if cleaned_row:
                             values = [cleaned_row[key] for key in rows[0].keys()]
                             cursor.execute(query, values)
+                self.stdout.write(self.style.SUCCESS(f'Таблица {table} загружена'))
+        self.add_superuser(options['app'], options['createsuperuser'])
