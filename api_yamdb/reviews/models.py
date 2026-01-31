@@ -63,7 +63,7 @@ class Title(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
     year = models.PositiveSmallIntegerField()
     # Заглушка, нужно сделать расчет рейтинга из модели Review
-    rating = models.PositiveSmallIntegerField(default=None)
+    rating = models.PositiveSmallIntegerField(default=None, null=True)
     description = models.TextField('Описание', blank=True)
     genre = models.ManyToManyField(Genre, related_name='titles')
     category = models.ForeignKey(Category,
@@ -89,7 +89,7 @@ class Review(models.Model):
     # Оценка произведению - целое число от 1 до 10.
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
-    # На одно произведение пользователь может оставить только один отзыв!
+    # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
@@ -97,6 +97,12 @@ class Review(models.Model):
         ordering = ('-pub_date', )
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author', ),
+                name='unique review'
+            )
+        ]
 
     def __str__(self):
         return self.text
@@ -109,7 +115,7 @@ class Comment(models.Model):
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='comments')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
-    review_id = models.ForeignKey(
+    review = models.ForeignKey(
         Review, on_delete=models.CASCADE, related_name='comments')
 
     class Meta:

@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model, tokens
 from django.shortcuts import get_object_or_404, render
-from rest_framework import permissions, viewsets, request, status
+from rest_framework import filters, permissions, viewsets, request, status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -98,7 +98,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    # permission_classes
+    permission_classes = (AdminOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
 class GenreViewSet(viewsets.ModelViewSet):
@@ -120,18 +123,43 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с отзывами на произведения."""
+    """Вьюсет для работы с отзывами к произведению <title_id>."""
 
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes =
 
+    def get_title_id(self):
+        """Определеяет ID текущего произведения."""
+        return self.kwargs['title_id']
+
+    def get_queryset(self):
+        """Выбирает отзывы только к текущему произведению."""
+        return Review.objects.filter(title=self.get_title_id())
+
+    def perform_create(self, serializer):
+        """Создает новый отзыв, привязывая его к текущему произведению
+        и авторизованному пользователю."""
+        serializer.save(author=self.request.user, title=self.get_title_id())
+
 
 class CommentViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с комментариями на отзывы."""
+    """Вьюсет для работы с комментариями к отзыву <review_id>."""
 
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     pagination_class = LimitOffsetPagination
     # permission_classes =
+
+    def get_review_id(self):
+        """Определяет ID текущего отзыва."""
+        return self.kwargs['review_id']
+
+    def get_queryset(self):
+        """Выбирает комментарии только для отзыва <review_id>."""
+        return Comment.objects.filter(review_id=self.get_review_id())
+
+    def perform_create(self, serializer):
+        """Создает новый комментарий, привязывая его к отзыву и
+        авторизованному пользователю."""
+        serializer.save(author=self.request.user,
+                        review_id=self.get_review_id())
