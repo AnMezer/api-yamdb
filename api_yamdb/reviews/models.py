@@ -89,7 +89,7 @@ class Review(models.Model):
     # Оценка произведению - целое число от 1 до 10.
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
-    # На одно произведение пользователь может оставить только один отзыв!
+    # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
@@ -97,6 +97,12 @@ class Review(models.Model):
         ordering = ('-pub_date', )
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author', ),
+                name='unique review'
+            )
+        ]
 
     def __str__(self):
         return self.text
