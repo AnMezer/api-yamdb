@@ -7,18 +7,22 @@ from .base_models import NameSlugBaseModel
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
-    USERS_ROLES
 )
 
 
 class User(AbstractUser):
+    class Role(models.TextChoices):
+        USER = 'user'
+        ADMIN = 'admin'
+        MODER = 'moderator'
     email = models.EmailField(unique=True)
     bio = models.TextField('Биография', blank=True)
-    role = models.IntegerField(
+    role = models.CharField(
         'Роль',
-        choices=USERS_ROLES,
-        default=USERS_ROLES[0][0],
-        blank=True
+        choices=Role,
+        default=Role.USER,
+        blank=True,
+        max_length=10
     )
 
     def clean_username(self):
@@ -28,6 +32,14 @@ class User(AbstractUser):
             raise ValidationError('Данное имя пользователя запрещено')
 
         return username
+
+    @property
+    def is_admin(self):
+        return self.role == self.Role.ADMIN or self.is_superuser
+
+    @property
+    def is_moder(self):
+        return self.role == self.Role.ADMIN or self.Role.MODER
 
     def __str__(self):
         return self.username
@@ -63,6 +75,9 @@ class Title(models.Model):
         verbose_name = 'произведение'
         verbose_name_plural = 'произведения'
 
+    def __str__(self):
+        return f'{self.name} ({self.year})'
+
 
 class Review(models.Model):
     """Класс для работы с отзывами на произведения."""
@@ -74,7 +89,7 @@ class Review(models.Model):
     # Оценка произведению - целое число от 1 до 10.
     score = models.IntegerField(validators=[MinValueValidator(1),
                                             MaxValueValidator(10)])
-    # На одно произведение пользователь может оставить только один отзыв!
+    # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
@@ -82,6 +97,12 @@ class Review(models.Model):
         ordering = ('-pub_date', )
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author', ),
+                name='unique review'
+            )
+        ]
 
     def __str__(self):
         return self.text
