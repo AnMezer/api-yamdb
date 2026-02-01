@@ -163,7 +163,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             if reviewer.exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение.')
-            
+
         return data
 
 
