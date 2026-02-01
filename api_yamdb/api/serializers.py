@@ -140,6 +140,11 @@ class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField(
         source='author.username', read_only=True)
     title = serializers.PrimaryKeyRelatedField(read_only=True)
+    score = serializers.IntegerField(
+        min_value=1, max_value=10,
+        error_messages={
+            'min_value': 'Оценка должна быть целым числом от 1 до 10.',
+            'max_value': 'Оценка должна быть целым числом от 1 до 10.'})
 
     class Meta:
         fields = ('id', 'text', 'author', 'pub_date', 'score', 'title')
@@ -147,30 +152,18 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """
-        Валидириует набор данных перед созданием отзыва.
-
         Проверяет, что пользователь еще не оставлял отзыв на это произведение,
-        и что оценка есть, и это число из диапазона 1..10.
         """
         request = self.context.get('request')
+        view = self.context.get('view')
         if request.method == 'POST':
+            title_id = view.kwargs.get('title_id')
             reviewer = Review.objects.filter(
-                author=request.user, title=data['title_id'])
+                author=request.user, title_id=title_id)
             if reviewer.exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение.')
-
-            score = data.get('score')
-            if score is None:
-                raise serializers.ValidationError(
-                    'Необходимо указать оценку!')
-            elif not isinstance(score, int):
-                raise serializers.ValidationError(
-                    'Оценка должна быть целым числом.')
-            elif score < 1 or score > 10:
-                raise serializers.ValidationError(
-                    'Оценка должна быть целым числом от 1 до 10.')
-
+            
         return data
 
 

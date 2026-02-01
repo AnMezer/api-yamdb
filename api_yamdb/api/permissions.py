@@ -5,7 +5,7 @@ from rest_framework import permissions
 User = get_user_model()
 
 
-class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
+class StaffOrOwnerOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return (
@@ -18,6 +18,7 @@ class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
             request.method in permissions.SAFE_METHODS
             or request.user == obj.author
             or request.user.is_moder
+            or request.user.is_admin
         )
 
 
