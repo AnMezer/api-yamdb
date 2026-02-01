@@ -5,7 +5,7 @@ from rest_framework import permissions
 User = get_user_model()
 
 
-class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
+class StaffOrOwnerOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return (
