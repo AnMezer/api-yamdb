@@ -8,7 +8,8 @@ from rest_framework_simplejwt import views as simplejwtviews
     #TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review, Comment
-from .permissions import AdminOnly, ListReadOnly, IsAdminOrReadOnly
+from .permissions import (AdminOnly, ListReadOnly, ModeratorOrOwnerOrReadOnly,
+    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -156,12 +157,13 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.Retrie
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
+    #permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
-            return (ListReadOnly(),)
+            return (ReadOnly(),)
         return super().get_permissions()
 
     def get_queryset(self):
@@ -189,7 +191,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
-    # permission_classes =
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+    def get_permissions(self):
+        if self.action in ['partial_update', 'delete']:
+            return (ModeratorOrOwnerOrReadOnly(),)
+        return super().get_permissions()
 
     def get_title_id(self):
         """Определеяет ID текущего произведения."""
@@ -212,16 +219,17 @@ class CommentViewSet(viewsets.ModelViewSet):
     pagination_class = LimitOffsetPagination
     # permission_classes =
 
-    def get_review_id(self):
+    def get_review(self):
         """Определяет ID текущего отзыва."""
-        return self.kwargs['review_id']
+        review_id = self.kwargs.get('review_id')
+        return get_object_or_404(Review, id=review_id)
 
     def get_queryset(self):
         """Выбирает комментарии только для отзыва <review_id>."""
-        return Comment.objects.filter(review_id=self.get_review_id())
+        return self.get_review.comments.all()
 
     def perform_create(self, serializer):
         """Создает новый комментарий, привязывая его к отзыву и
         авторизованному пользователю."""
         serializer.save(author=self.request.user,
-                        review_id=self.get_review_id())
+                        review_id=self.kwargs.get('review_id'))

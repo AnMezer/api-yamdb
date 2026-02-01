@@ -39,7 +39,7 @@ class User(AbstractUser):
 
     @property
     def is_moder(self):
-        return self.role == self.Role.ADMIN or self.Role.MODER
+        return self.role == self.Role.ADMIN or self.role == self.Role.MODER
 
     def __str__(self):
         return self.username
