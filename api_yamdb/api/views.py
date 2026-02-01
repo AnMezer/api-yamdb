@@ -8,15 +8,16 @@ from rest_framework_simplejwt import views as simplejwtviews
     #TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review, Comment
-from .permissions import AdminOnly
+from .permissions import AdminOnly, ListReadOnly
 from .serializers import (
     CategorySerializer,
+    CommentSerializer,
     GenreSerializer,
-    TitleSerializer,
-    UserSerializer,
-    SignUpSerializer,
     ReviewSerializer,
-    CommentSerializer
+    SignUpSerializer,
+    TitleSerializer,
+    TokenSerializer,
+    UserSerializer,
 )
 from .services.email import sender_mail
 
@@ -26,7 +27,10 @@ User = get_user_model()
 class TokenView(simplejwtviews.TokenObtainPairView):
     #def post():
     queryset = User.objects.all()
-    # queryset = User.objects.all()
+    
+    def get_serializer_class(self):
+        return TokenSerializer
+    #serializer_class = TokenSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -34,7 +38,7 @@ class UserViewSet(viewsets.ModelViewSet):
     #serializer_class = UserSerializer
 
     def get_serializer_class(self):
-        if self.basename == 'users':
+        if self.basename != 'signup_user':
             return UserSerializer
         else:
             return SignUpSerializer
@@ -43,7 +47,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.basename == 'signup_user':
             return (permissions.AllowAny(),)
         elif self.basename == 'users_me':
-            return (permissions.IsAuthenticated,)
+            return (permissions.IsAuthenticated(),)
         else:
             return (AdminOnly(),)
 
@@ -59,16 +63,16 @@ class UserViewSet(viewsets.ModelViewSet):
                 email = serializer.validated_data.get('email')
                 serializer.save()
                 headers = self.get_success_headers(serializer.data)
-                
+
                 try:
                     sender_mail(122345, email)
-                    tokens.default_token_generator.make
+                    #tokens.default_token_generator.make
                     return Response(serializer.data, status=200, headers=headers)
                 except Exception as e:
                     return Response(
                         {'username': username,
-                            'email': email,
-                            'error': f'Письмо с кодом не отправлено: {str(e)}'},
+                         'email': email,
+                         'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_200_OK
                     )
             elif user and user.email == serializer.initial_data.get('email', None):
@@ -84,7 +88,15 @@ class UserViewSet(viewsets.ModelViewSet):
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
+            elif user and user.email != serializer.initial_data.get('email', None):
+                return Response(
+                    {'error': 'Учетные данные не верны'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+        if self.basename == 'users':
+            super().create(self, request, *args, **kwargs)
+            #serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -98,10 +110,15 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
+    permission_classes = (AdminOnly, )
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return (ListReadOnly(),)
+        return super().get_permissions()
 
 
 class GenreViewSet(viewsets.ModelViewSet):
