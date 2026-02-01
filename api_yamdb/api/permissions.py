@@ -34,3 +34,15 @@ class AdminOnly(permissions.BasePermission):
 class ListReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in permissions.SAFE_METHODS
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return getattr(request.user, 'role', None) == 'admin'
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)

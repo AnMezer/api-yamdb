@@ -21,6 +21,7 @@ class CategorySerializer(serializers.ModelSerializer):
         - name
         - slug
     """
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
@@ -47,27 +48,41 @@ class GenreSerializer(serializers.ModelSerializer):
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
-            UniqueValidator(queryset=Category.objects.all(),
-                            message='Категория с таким slug уже существует.'),
+            UniqueValidator(queryset=Genre.objects.all(),
+                            message='Жанр с таким slug уже существует.'),
         ]
     )
 
     class Meta:
         fields = ('name', 'slug')
         model = Genre
-        read_only_fields = ('name', 'slug')
 
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для произведений."""
 
-    genre = GenreSerializer(many=True)
-    category = CategorySerializer()
+    genre = serializers.SlugRelatedField(slug_field='slug',
+                                         queryset=Genre.objects.all(),
+                                         many=True)
+    category = serializers.SlugRelatedField(slug_field='slug',
+                                            queryset=Category.objects.all())
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
 
     class Meta:
-        fields = '__all__'
         model = Title
+        fields = ('id', 'name', 'year', 'description',
+                  'rating', 'genre', 'category')
         read_only_fields = ('id', 'rating')
+
+    def to_representation(self, instance):
+        """Заменяет слаги на объекты"""
+
+        representation = super().to_representation(instance)
+        representation['genre'] = GenreSerializer(instance.genre.all(),
+                                                  many=True).data
+        representation['category'] = CategorySerializer(instance.category).data
+
+        return representation
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
