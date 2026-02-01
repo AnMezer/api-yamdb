@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model, tokens
 from django.shortcuts import get_object_or_404, render
-from rest_framework import filters, permissions, viewsets, request, status
+from rest_framework import filters, permissions, viewsets, request, status, mixins
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -9,7 +9,7 @@ from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .permissions import (AdminOnly, ListReadOnly, ModeratorOrOwnerOrReadOnly,
-    RetrievReadOnly, ReadOnly)
+    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -114,13 +114,14 @@ class UserViewSet(viewsets.ModelViewSet):
     # permission_classes = (permissions.IsAuthenticated)
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
+                      mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly, )
+    permission_classes = (AdminOnly,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
@@ -131,13 +132,17 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
+                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly, )
+    permission_classes = (AdminOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
     def get_permissions(self):
         if self.action == 'list':
@@ -145,20 +150,40 @@ class GenreViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
-class TitleViewSet(viewsets.ModelViewSet):
+class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
+                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
     #permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+    permission_classes = (AdminOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
-        if self.action not in ['list', 'retriev']:
-            return (AdminOnly(),)
-        elif self.action in ['list', 'retriev']:
+        if self.action in ['list', 'retrieve']:
             return (ReadOnly(),)
         return super().get_permissions()
+
+    def get_queryset(self):
+        """Фильтрует ответ по параметрам запроса."""
+        queryset = Title.objects.all()
+        params = self.request.query_params
+        genre = params.get('genre', None)
+        category = params.get('category', None)
+        year = params.get('year', None)
+        name = params.get('name', None)
+
+        if genre:
+            queryset = queryset.filter(genre__slug=genre)
+        if category:
+            queryset = queryset.filter(category__slug=category)
+        if year:
+            queryset = queryset.filter(year=year)
+        if name:
+            queryset = queryset.filter(name__contains=name)
+        return queryset
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

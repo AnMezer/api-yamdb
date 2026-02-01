@@ -51,3 +51,16 @@ class RetrievReadOnly(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
+
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if request.method == 'GET':
+            return True
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return getattr(request.user, 'role', None) == 'admin'
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
