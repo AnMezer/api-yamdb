@@ -29,14 +29,12 @@ class CategoryGenreViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
         return super().get_permissions()
 
 
-class BaseTitleViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
-                       mixins.DestroyModelMixin, mixins.RetrieveModelMixin,
-                       mixins.UpdateModelMixin, AdminOnlyViewset):
+class BaseTitleViewset(viewsets.ModelViewSet, AdminOnlyViewset):
     """Базовый вьюсет для произведений"""
     http_method_names = ['get', 'post', 'patch', 'delete']
 
 
-class RevievCommentViewset(viewsets.ModelViewSet):
+class ReviewCommentViewset(viewsets.ModelViewSet):
     """Базовый вьюсет для отзывов и комментов"""
     pagination_class = LimitOffsetPagination
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
