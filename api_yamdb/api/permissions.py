@@ -31,6 +31,23 @@ class AdminOnly(permissions.BasePermission):
         return self.has_permission(request, view)
 
 
-class ListReadOnly(permissions.BasePermission):
+class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.method in permissions.SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+class ListReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return (not request.user or not request.user.is_authenticated
+                or request.method in permissions.SAFE_METHODS)
+
+
+class RetrievReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
