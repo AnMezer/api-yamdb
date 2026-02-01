@@ -28,7 +28,7 @@ class AdminOnly(permissions.BasePermission):
         return request.user.is_admin
 
     def has_object_permission(self, request, view, obj):
-        self.has_permission(request, view)
+        return self.has_permission(request, view)
 
 
 class ListReadOnly(permissions.BasePermission):

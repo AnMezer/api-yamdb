@@ -20,6 +20,7 @@ from .serializers import (
     UserSerializer,
 )
 from .services.email import sender_mail
+from .utils.confirm_code import ConfirmationCodeService
 
 User = get_user_model()
 
@@ -36,6 +37,8 @@ class TokenView(simplejwtviews.TokenObtainPairView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     #serializer_class = UserSerializer
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
 
     def get_serializer_class(self):
         if self.basename != 'signup_user':
@@ -60,13 +63,18 @@ class UserViewSet(viewsets.ModelViewSet):
             user = User.objects.filter(username=username).first()
             if serializer.is_valid():
                 username = serializer.validated_data.get('username')
+
                 email = serializer.validated_data.get('email')
+
                 serializer.save()
+
+                user = User.objects.filter(username=username).first()
+                code = ConfirmationCodeService.generate_code(user)
+
                 headers = self.get_success_headers(serializer.data)
 
                 try:
-                    sender_mail(122345, email)
-                    #tokens.default_token_generator.make
+                    sender_mail(code, email)
                     return Response(serializer.data, status=200, headers=headers)
                 except Exception as e:
                     return Response(
@@ -77,7 +85,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     )
             elif user and user.email == serializer.initial_data.get('email', None):
                 try:
-                    sender_mail(122345, user.email)
+                    code = ConfirmationCodeService.generate_code(user)
+                    sender_mail(34324, user.email)
                     return Response(
                         {'username': user.username,
                          'email': user.email},
