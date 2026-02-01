@@ -120,15 +120,15 @@ class CategoryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (AdminOnly,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
 
-    #def get_permissions(self):
-    #    if self.action == 'list':
-    #        return (ListReadOnly(),)
-    #    return super().get_permissions()
+    def get_permissions(self):
+        if self.action == 'list':
+            return (ListReadOnly(),)
+        return super().get_permissions()
 
 
 class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -138,10 +138,15 @@ class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (AdminOnly,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return (ListReadOnly(),)
+        return super().get_permissions()
 
 
 class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
@@ -151,8 +156,13 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.Retrie
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return (ListReadOnly(),)
+        return super().get_permissions()
 
     def get_queryset(self):
         """Фильтрует ответ по параметрам запроса."""
