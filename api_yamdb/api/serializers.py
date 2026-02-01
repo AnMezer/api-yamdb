@@ -1,10 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import RegexValidator
 from django.forms import SlugField
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
 from rest_framework.validators import UniqueValidator
-from django.core.validators import RegexValidator
-
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from constants.constants import FORBIDDEN_USERNAME
 from reviews.models import Category, Genre, Title, Review, Comment
@@ -102,11 +101,13 @@ class SignUpSerializer(BaseUserSerializer):
         pass
 
 
-class TokenSerializer(TokenObtainPairSerializer):
-    #confirmation_code = default_token_generator.check_token()
+class TokenSerializer(TokenObtainSerializer):
+    #username = serializers.CharField()
+    confirmation_code = serializers.CharField()
 
-    class Meta:
-        fields = ('username', 'confirmation_code')
+    class Meta(TokenObtainSerializer):
+        exlude = ('password',)
+        #fields = ('username', 'confirmation_code')
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
