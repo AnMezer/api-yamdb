@@ -9,7 +9,8 @@ from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .permissions import (AdminOnly, ListReadOnly,
-                          RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
+    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
+from .viewsets import CategoryGenreViewset, BaseTitleViewset, ReviewCommentViewset
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -113,54 +114,28 @@ class UserViewSet(viewsets.ModelViewSet):
     # permission_classes = (permissions.IsAuthenticated)
 
 
-class CategoryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
-                      mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class CategoryViewSet(CategoryGenreViewset):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ListReadOnly(),)
-        return super().get_permissions()
 
 
-class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
-                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class GenreViewSet(CategoryGenreViewset):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ListReadOnly(),)
-        return super().get_permissions()
 
 
-class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
-                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class TitleViewSet(BaseTitleViewset):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    pagination_class = LimitOffsetPagination
-    # permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
-    permission_classes = (AdminOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
+        """Устанавливает права доступа"""
         if self.action in ['list', 'retrieve']:
             return (ReadOnly(),)
         return super().get_permissions()
@@ -185,20 +160,11 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.Retrie
         return queryset
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
+class ReviewViewSet(ReviewCommentViewset):
     """Вьюсет для работы с отзывами к произведению <title_id>."""
 
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ReadOnly(),)
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return (StaffOrOwnerOrReadOnly(),)
-        return super().get_permissions()
 
     def get_title_id(self):
         """Определеяет ID текущего произведения."""
