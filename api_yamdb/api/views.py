@@ -219,20 +219,11 @@ class ReviewViewSet(ReviewCommentViewset):
         serializer.save(author=self.request.user, title=title)
 
 
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentViewSet(ReviewCommentViewset):
     """Вьюсет для работы с комментариями к отзыву <review_id>."""
 
     serializer_class = CommentSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ReadOnly(),)
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return (ModeratorOrOwnerOrReadOnly(),)
-        return super().get_permissions()
 
     def get_review(self):
         """Определяет ID текущего отзыва."""
