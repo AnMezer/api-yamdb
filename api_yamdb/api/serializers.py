@@ -141,7 +141,8 @@ class UserMeSerializer(BaseUserSerializer):
 
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
+                  + ['first_name', 'last_name', 'bio', 'role']
+                  )
 
 
 class SignUpSerializer(BaseUserSerializer):
@@ -150,21 +151,21 @@ class SignUpSerializer(BaseUserSerializer):
         pass
 
 
-class TokenSerializer(serializers.Serializer):
-    """Кастомный сериализатор для выдачи токенов."""
-    username = serializers.CharField()
+class TokenSerializer(TokenObtainSerializer):
+    # username = serializers.CharField()
     confirmation_code = serializers.CharField()
 
-    def validate(self, attrs):
-        username = attrs.get('username')
-        confirmation_code = attrs.get('confirmation_code')
+    class Meta(TokenObtainSerializer):
+        exlude = ('password',)
+        # fields = ('username', 'confirmation_code')
 
-        user = get_object_or_404(User, username=username)
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
 
-        if not ConfirmationCodeService.verify_code(user, confirmation_code):
-            raise serializers.ValidationError(
-                {'confirmation_code': 'Неверный код'}
-            )
+        # Add custom claims
+        # token['name'] = user.name
+        # ...
 
         refresh = RefreshToken.for_user(user)
         return {
@@ -201,7 +202,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             if reviewer.exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение.')
-            
+
         return data
 
 
@@ -210,8 +211,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
     author = serializers.StringRelatedField(
         source='author.username', read_only=True)
-    review_id = serializers.PrimaryKeyRelatedField(read_only=True)
+    review = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'review_id')
+        fields = ('id', 'text', 'author', 'pub_date', 'review')
         model = Comment

@@ -6,10 +6,12 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
+# TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review
 from .permissions import (AdminOnly, ListReadOnly,
-                          ReadOnly, OwnerOrReadOnly)
+    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
+from .viewsets import CategoryGenreViewset, BaseTitleViewset, ReviewCommentViewset
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -26,26 +28,19 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class TokenView(simplejwtviews.TokenViewBase):
-    """Вьюсет для выдачи токенов"""
+class TokenView(simplejwtviews.TokenObtainPairView):
+    # def post():
+    queryset = User.objects.all()
 
     def get_serializer_class(self):
         return TokenSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            return Response(
-                serializer.validated_data,
-                status=status.HTTP_200_OK
-            )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # serializer_class = TokenSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет для работы с пользователями, регистрация, редакт польз."""
     queryset = User.objects.all()
+    # serializer_class = UserSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
@@ -122,70 +117,30 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response(serializer.validated_data,
                                 status=status.HTTP_201_CREATED)
 
+        if self.basename == 'users':
+            super().create(self, request, *args, **kwargs)
+            # serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False,
-            permission_classes=(OwnerOrReadOnly),
-            methods=['get', 'patch', 'delete'],
-            url_path='me')
-    def me(self, request):
-        user = request.user
-
-        if request.method == 'PATCH':
-            serializer = self.get_serializer(user,
-                                             data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors,
-                                status=status.HTTP_400_BAD_REQUEST)
-        elif request.method == 'DELETE':
-            raise MethodNotAllowed('DELETE')
-
-        serializer = self.get_serializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    # queryset = User.objects.all()
+    # permission_classes = (permissions.IsAuthenticated)
 
 
-class CategoryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
-                      mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class CategoryViewSet(CategoryGenreViewset):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ListReadOnly(),)
-        return super().get_permissions()
 
 
-class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
-                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class GenreViewSet(CategoryGenreViewset):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ListReadOnly(),)
-        return super().get_permissions()
 
 
-class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
-                   mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
-                   mixins.DestroyModelMixin, viewsets.GenericViewSet):
+class TitleViewSet(BaseTitleViewset):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
@@ -195,6 +150,7 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
+        """Устанавливает права доступа"""
         if self.action in ['list', 'retrieve']:
             return (ReadOnly(),)
         return super().get_permissions()
@@ -219,20 +175,11 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
         return queryset
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
+class ReviewViewSet(ReviewCommentViewset):
     """Вьюсет для работы с отзывами к произведению <title_id>."""
 
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return (ReadOnly(),)
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            return (OwnerOrReadOnly(),)
-        return super().get_permissions()
 
     def get_title_id(self):
         """Определеяет ID текущего произведения."""
@@ -254,7 +201,15 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     serializer_class = CommentSerializer
     pagination_class = LimitOffsetPagination
-    # permission_classes =
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return (ReadOnly(),)
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return (StaffOrOwnerOrReadOnly(),)
+        return super().get_permissions()
 
     def get_review(self):
         """Определяет ID текущего отзыва."""
@@ -268,5 +223,5 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создает новый комментарий, привязывая его к отзыву и
         авторизованному пользователю."""
-        serializer.save(author=self.request.user,
-                        review_id=self.kwargs.get('review_id'))
+        review = self.get_review()
+        serializer.save(author=self.request.user, review=review)
