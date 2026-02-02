@@ -12,7 +12,6 @@ from reviews.models import Category, Genre, Title, Review
 from .permissions import AdminOnly, ReadOnly, OwnerOrReadOnly
 from .viewsets import (CategoryGenreViewset, BaseTitleViewset,
                        ReviewCommentViewset)
-
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -29,19 +28,26 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class TokenView(simplejwtviews.TokenObtainPairView):
-    # def post():
-    queryset = User.objects.all()
+class TokenView(simplejwtviews.TokenViewBase):
+    """Вьюсет для выдачи токенов"""
 
     def get_serializer_class(self):
         return TokenSerializer
-    # serializer_class = TokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            return Response(
+                serializer.validated_data,
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     """Вьюсет для работы с пользователями, регистрация, редакт польз."""
     queryset = User.objects.all()
-    # serializer_class = UserSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
@@ -118,13 +124,29 @@ class UserViewSet(viewsets.ModelViewSet):
                 return Response(serializer.validated_data,
                                 status=status.HTTP_201_CREATED)
 
-        if self.basename == 'users':
-            super().create(self, request, *args, **kwargs)
-            # serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # queryset = User.objects.all()
-    # permission_classes = (permissions.IsAuthenticated)
+    @action(detail=False,
+            permission_classes=(OwnerOrReadOnly),
+            methods=['get', 'patch', 'delete'],
+            url_path='me')
+    def me(self, request):
+        user = request.user
+
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(user,
+                                             data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors,
+                                status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            raise MethodNotAllowed('DELETE')
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CategoryViewSet(CategoryGenreViewset):
