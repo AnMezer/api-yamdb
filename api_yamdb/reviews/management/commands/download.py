@@ -155,7 +155,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.NOTICE(
                 f'Таблица {table_name} очищена'))
         except Exception as e:
-            raise CantDeleteData(
+            raise CantDeleteDataError(
                 f'Ошибка при очистке таблицы {table}: {e}')
 
     def delete_data(self, clean: bool, app: str) -> None:
