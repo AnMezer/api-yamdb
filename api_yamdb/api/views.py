@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Title, Review
-from .permissions import (AdminOnly, CustomBasePermission, ListReadOnly,
+from .permissions import (AdminOnly, ListReadOnly,
                           ReadOnly, OwnerOrReadOnly)
 from .serializers import (
     CategorySerializer,
