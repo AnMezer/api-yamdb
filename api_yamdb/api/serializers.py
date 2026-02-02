@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from constants.constants import (
     CHAR_FIELD_LENGTH,
@@ -11,7 +11,8 @@ from constants.constants import (
     REGEX_STAMP,
     SLUG_FIELD_LENGTH,
 )
-from reviews.models import Category, Genre, Title, Review, Comment
+from reviews.models import Category, Comment, Genre, Review, Title
+
 from .utils.confirm_code import ConfirmationCodeService
 
 User = get_user_model()
@@ -29,7 +30,8 @@ class CategorySerializer(serializers.ModelSerializer):
         max_length=SLUG_FIELD_LENGTH,
         validators=[
             RegexValidator(regex=REGEX_STAMP,
-                           message=f'Для slug можно использовать только символы {REGEX_STAMP}'),
+                           message=(f'Для slug можно использовать'
+                                    f'только символы {REGEX_STAMP}')),
             UniqueValidator(queryset=Category.objects.all(),
                             message='Категория с таким slug уже существует.')
         ]

@@ -1,17 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, permissions, viewsets, status
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
 
-from reviews.models import Category, Genre, Title, Review
-from .permissions import (AdminOnly, ReadOnly, OwnerOrReadOnly,
-                          ModeratorOrOwnerOrReadOnly)
-from .viewsets import (CategoryGenreViewset, BaseTitleViewset,
-                       ReviewCommentViewset)
+from reviews.models import Category, Genre, Review, Title
+
+from .permissions import AdminOnly, OwnerOrReadOnly, ReadOnly
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -20,10 +18,15 @@ from .serializers import (
     SignUpSerializer,
     TitleSerializer,
     TokenSerializer,
-    UserSerializer
+    UserSerializer,
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
+from .viewsets import (
+    BaseTitleViewset,
+    CategoryGenreViewset,
+    ReviewCommentViewset,
+)
 
 User = get_user_model()
 

@@ -1,7 +1,6 @@
 from django.db import models
 
-from constants.constants import (CHAR_FIELD_LENGTH, SLUG_FIELD_LENGTH,
-                                 REGEX_STAMP)
+from constants.constants import CHAR_FIELD_LENGTH, SLUG_FIELD_LENGTH
 
 
 class NameSlugBaseModel(models.Model):

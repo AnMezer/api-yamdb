@@ -1,13 +1,14 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 
-from .base_models import NameSlugBaseModel
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
 )
+
+from .base_models import NameSlugBaseModel
 
 
 class User(AbstractUser):
