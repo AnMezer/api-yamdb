@@ -1,20 +1,21 @@
 import csv
 import os
+from datetime import datetime
+
+from django.apps import apps
 from django.core.management.base import BaseCommand, CommandParser
 from django.db import connection, transaction
-from django.apps import apps
-from datetime import datetime
 from django.db.models.base import ModelBase
 
-
 from reviews.models import User
-from .exceptions import ModelNotFound, CantDeleteData
 
+from .exceptions import CantDeleteData, ModelNotFound
 
 # Запуск из корня проекта:
-# python .\api_yamdb\manage.py download api_yamdb/static/data --reviews --clean
+# python .\api_yamdb\manage.py download api_yamdb\static\data
 # --reviews обязательный параметр - название приложения
-# --clean необязательный параметр. если установлен, перед сохранением таблицы будут очищены 
+# --clean необязательный параметр. если установлен,
+# перед сохранением таблицы будут очищены
 # Слэши можно использовать любые, модуль os сам все исправит, как нужно.
 
 # Имена файлов должны соответствовать именам моделей
@@ -44,7 +45,8 @@ class Command(BaseCommand):
     help = 'Импорт данных из CSV файла в базу данных приложения'
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument('path', type=str, help='Путь к папке с CSV файлами')
+        parser.add_argument('path', type=str,
+                            help='Путь к папке с CSV файлами')
         parser.add_argument('--app', type=str, default='reviews',
                             help='Приложение для импорта')
         parser.add_argument('--splitter', type=str, default=',',
@@ -69,7 +71,8 @@ class Command(BaseCommand):
             if not os.path.exists(f'{file_path}'):
                 not_exist_files.append(f'{table}.csv')
         if not_exist_files:
-            error_message = f'Файл(ы) не найден(ы): {", ".join(not_exist_files)}'
+            error_message = (f'Файл(ы) не найден(ы): '
+                             f'{", ".join(not_exist_files)}')
             raise FileNotFoundError(error_message)
 
     def get_model(self, app: str, table: str) -> ModelBase:
@@ -116,7 +119,7 @@ class Command(BaseCommand):
                 try:
                     # Пробуем преобразовать value -> iso -> datetime
                     dt_iso = value.replace('Z', '+00:00')
-                    dt_datetime = datetime.fromisoformat(dt_iso)
+                    dt_datetime = datetime.fromisoformat(dt_iso)  # noqa
                     cleaned_row[field] = value
                 except Exception:
                     return None
@@ -149,7 +152,8 @@ class Command(BaseCommand):
             for query in querys:
                 with connection.cursor() as cursor:
                     cursor.execute(query)
-            self.stdout.write(self.style.NOTICE(f'Таблица {table_name} очищена'))
+            self.stdout.write(self.style.NOTICE(
+                f'Таблица {table_name} очищена'))
         except Exception as e:
             raise CantDeleteData(f'Ошибка при очистке таблицы {table}: {e}')
 
@@ -206,7 +210,8 @@ class Command(BaseCommand):
                             cleaned_row = self.clean_row(row, table)
                             if cleaned_row:
                                 model.objects.create(**cleaned_row)
-                self.stdout.write(self.style.SUCCESS(f'Таблица {table} загружена'))
+                self.stdout.write(self.style.SUCCESS(
+                    f'Таблица {table} загружена'))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'{e}'))
 
@@ -226,13 +231,16 @@ class Command(BaseCommand):
                 table_name = f'{options["app"]}_{table}'
 
                 # Формируем SQL запрос
-                query = f'INSERT INTO {table_name} ({columns}) VALUES ({empty_values})'
+                query = (f'INSERT INTO {table_name} ({columns}) '
+                         f'VALUES ({empty_values})')
 
                 with connection.cursor() as cursor:
                     for row in rows:
                         cleaned_row = self.clean_row(row, table)
                         if cleaned_row:
-                            values = [cleaned_row[key] for key in rows[0].keys()]
+                            values = ([cleaned_row[key]
+                                       for key in rows[0].keys()])
                             cursor.execute(query, values)
-                self.stdout.write(self.style.SUCCESS(f'Таблица {table} загружена'))
+                self.stdout.write(self.style.SUCCESS(
+                    f'Таблица {table} загружена'))
         self.add_superuser(options['createsuperuser'])
