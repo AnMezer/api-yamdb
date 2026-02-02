@@ -1,18 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
-from django.shortcuts import get_object_or_404
+from django.forms import SlugField
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
 from rest_framework.validators import UniqueValidator
 
-from constants.constants import (
-    CHAR_FIELD_LENGTH,
-    FORBIDDEN_USERNAME,
-    REGEX_STAMP,
-    SLUG_FIELD_LENGTH,
-)
+from constants.constants import FORBIDDEN_USERNAME
 from reviews.models import Category, Genre, Title, Review, Comment
-from .utils.confirm_code import ConfirmationCodeService
+from constants.constants import (SLUG_FIELD_LENGTH,
+                                 REGEX_STAMP,
+                                 CHAR_FIELD_LENGTH)
 
 User = get_user_model()
 
@@ -89,7 +86,6 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
-    """Базовый сериализатор пользователей."""
     class Meta:
         model = User
         fields = ['username', 'email']
@@ -100,7 +96,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
         if username.lower() == FORBIDDEN_USERNAME:
             raise serializers.ValidationError(
                 {
-                    'username': 'Данное имя пользователя запрещено.'
+                    'detail': 'Данное имя пользователя запрещено.'
                 }
             )
 
@@ -108,37 +104,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(BaseUserSerializer):
-    """Сериализатор для создания пользователей админом."""
-    role = serializers.CharField(default=User.Role.USER)
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
-
-    def validate_role(self, value):
-        role = value
-
-        if role not in [User.Role.USER, User.Role.ADMIN, User.Role.MODER]:
-            raise serializers.ValidationError(
-                {
-                    'role': 'Данная роль запрещена.'
-                }
-            )
-
-        return value
-
-    def get_fields(self):
-        fields = super().get_fields()
-        view = self.context.get('view')
-
-        if view and view.action == 'me':
-            fields['role'].read_only = True
-        return fields
-
-
-class UserMeSerializer(BaseUserSerializer):
     """Сериализатор для пользователей."""
-
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
                   + ['first_name', 'last_name', 'bio', 'role']
@@ -146,7 +112,6 @@ class UserMeSerializer(BaseUserSerializer):
 
 
 class SignUpSerializer(BaseUserSerializer):
-    """Сериализатор для регистрации пользователей."""
     class Meta(BaseUserSerializer.Meta):
         pass
 
@@ -167,10 +132,7 @@ class TokenSerializer(TokenObtainSerializer):
         # token['name'] = user.name
         # ...
 
-        refresh = RefreshToken.for_user(user)
-        return {
-            'access': str(refresh.access_token)
-        }
+        return token
 
 
 class ReviewSerializer(serializers.ModelSerializer):
