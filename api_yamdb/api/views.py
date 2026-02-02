@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, permissions, viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
@@ -19,7 +20,7 @@ from .serializers import (
     SignUpSerializer,
     TitleSerializer,
     TokenSerializer,
-    UserSerializer,
+    UserSerializer
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
@@ -45,21 +46,23 @@ class TokenView(simplejwtviews.TokenViewBase):
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с пользователями, регистрация, редакт польз."""
     queryset = User.objects.all()
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    lookup_field = 'username'
 
     def get_serializer_class(self):
         if self.basename != 'signup_user':
             return UserSerializer
-        else:
-            return SignUpSerializer
+        return SignUpSerializer
 
     def get_permissions(self):
         if self.basename == 'signup_user':
             return (permissions.AllowAny(),)
-        elif self.basename == 'users_me':
-            return (permissions.IsAuthenticated(),)
+        elif self.action == 'me':
+            return (OwnerOrReadOnly(),)
         else:
             return (AdminOnly(),)
 
@@ -84,7 +87,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 try:
                     sender_mail(code, email)
-                    return Response(serializer.data, status=200, headers=headers)
+                    return Response(
+                        serializer.data, status=200, headers=headers
+                    )
                 except Exception as e:
                     return Response(
                         {'username': username,
@@ -92,10 +97,11 @@ class UserViewSet(viewsets.ModelViewSet):
                          'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_200_OK
                     )
-            elif user and user.email == serializer.initial_data.get('email', None):
+            elif user and (
+                    user.email == serializer.initial_data.get('email', None)):
                 try:
                     code = ConfirmationCodeService.generate_code(user)
-                    sender_mail(34324, user.email)
+                    sender_mail(code, user.email)
                     return Response(
                         {'username': user.username,
                          'email': user.email},
@@ -106,11 +112,17 @@ class UserViewSet(viewsets.ModelViewSet):
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
-            elif user and user.email != serializer.initial_data.get('email', None):
+            elif user and (
+                    user.email != serializer.initial_data.get('email', None)):
                 return Response(
                     {'error': 'Учетные данные не верны'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        else:
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.validated_data,
+                                status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -156,6 +168,9 @@ class TitleViewSet(BaseTitleViewset):
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
+    pagination_class = LimitOffsetPagination
+    permission_classes = (AdminOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         """Устанавливает права доступа"""
