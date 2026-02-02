@@ -1,15 +1,15 @@
-from django.contrib.auth import get_user_model, tokens
-from django.shortcuts import get_object_or_404, render
-from rest_framework import filters, permissions, viewsets, request, status, mixins
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, permissions, viewsets, status, mixins
 from rest_framework.decorators import action
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
-    #TokenRefreshView,
 
-from reviews.models import Category, Genre, Title, Review, Comment
+from reviews.models import Category, Genre, Title, Review
 from .permissions import (AdminOnly, ListReadOnly, ModeratorOrOwnerOrReadOnly,
-    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly)
+                          ReadOnly, OwnerOrReadOnly)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -18,7 +18,7 @@ from .serializers import (
     SignUpSerializer,
     TitleSerializer,
     TokenSerializer,
-    UserSerializer,
+    UserSerializer
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
@@ -26,32 +26,41 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class TokenView(simplejwtviews.TokenObtainPairView):
-    #def post():
-    queryset = User.objects.all()
-    
+class TokenView(simplejwtviews.TokenViewBase):
+    """Вьюсет для выдачи токенов"""
+
     def get_serializer_class(self):
         return TokenSerializer
-    #serializer_class = TokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            return Response(
+                serializer.validated_data,
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """Вьюсет для работы с пользователями, регистрация, редакт польз."""
     queryset = User.objects.all()
-    #serializer_class = UserSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    lookup_field = 'username'
 
     def get_serializer_class(self):
         if self.basename != 'signup_user':
             return UserSerializer
-        else:
-            return SignUpSerializer
+        return SignUpSerializer
 
     def get_permissions(self):
         if self.basename == 'signup_user':
             return (permissions.AllowAny(),)
-        elif self.basename == 'users_me':
-            return (permissions.IsAuthenticated(),)
+        elif self.action == 'me':
+            return (OwnerOrReadOnly(),)
         else:
             return (AdminOnly(),)
 
@@ -76,7 +85,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 try:
                     sender_mail(code, email)
-                    return Response(serializer.data, status=200, headers=headers)
+                    return Response(
+                        serializer.data, status=200, headers=headers
+                    )
                 except Exception as e:
                     return Response(
                         {'username': username,
@@ -84,10 +95,11 @@ class UserViewSet(viewsets.ModelViewSet):
                          'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_200_OK
                     )
-            elif user and user.email == serializer.initial_data.get('email', None):
+            elif user and (
+                    user.email == serializer.initial_data.get('email', None)):
                 try:
                     code = ConfirmationCodeService.generate_code(user)
-                    sender_mail(34324, user.email)
+                    sender_mail(code, user.email)
                     return Response(
                         {'username': user.username,
                          'email': user.email},
@@ -98,20 +110,41 @@ class UserViewSet(viewsets.ModelViewSet):
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
-            elif user and user.email != serializer.initial_data.get('email', None):
+            elif user and (
+                    user.email != serializer.initial_data.get('email', None)):
                 return Response(
                     {'error': 'Учетные данные не верны'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+        else:
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.validated_data,
+                                status=status.HTTP_201_CREATED)
 
-        if self.basename == 'users':
-            super().create(self, request, *args, **kwargs)
-            #serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False,
+            permission_classes=(OwnerOrReadOnly),
+            methods=['get', 'patch', 'delete'],
+            url_path='me')
+    def me(self, request):
+        user = request.user
 
-    # queryset = User.objects.all()
-    # permission_classes = (permissions.IsAuthenticated)
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(user,
+                                             data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors,
+                                status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            raise MethodNotAllowed('DELETE')
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CategoryViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -150,14 +183,14 @@ class GenreViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
         return super().get_permissions()
 
 
-class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
+class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
+                   mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
                    mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    #permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
