@@ -5,11 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
-    #TokenRefreshView,
+# TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from .permissions import (AdminOnly, ListReadOnly,
-    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
+                          RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -27,17 +27,17 @@ User = get_user_model()
 
 
 class TokenView(simplejwtviews.TokenObtainPairView):
-    #def post():
+    # def post():
     queryset = User.objects.all()
-    
+
     def get_serializer_class(self):
         return TokenSerializer
-    #serializer_class = TokenSerializer
+    # serializer_class = TokenSerializer
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    #serializer_class = UserSerializer
+    # serializer_class = UserSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
 
@@ -106,9 +106,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if self.basename == 'users':
             super().create(self, request, *args, **kwargs)
-            #serializer.is_valid()
+            # serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
     # queryset = User.objects.all()
     # permission_classes = (permissions.IsAuthenticated)
@@ -157,7 +156,7 @@ class TitleViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, mixins.Retrie
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    #permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
+    # permission_classes = (permissions.IsAuthenticatedOrReadOnly, )
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -221,7 +220,15 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     serializer_class = CommentSerializer
     pagination_class = LimitOffsetPagination
-    # permission_classes =
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return (ReadOnly(),)
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return (StaffOrOwnerOrReadOnly(),)
+        return super().get_permissions()
 
     def get_review(self):
         """Определяет ID текущего отзыва."""
@@ -230,10 +237,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Выбирает комментарии только для отзыва <review_id>."""
-        return self.get_review.comments.all()
+        return self.get_review().comments.all()
 
     def perform_create(self, serializer):
         """Создает новый комментарий, привязывая его к отзыву и
         авторизованному пользователю."""
-        serializer.save(author=self.request.user,
-                        review_id=self.kwargs.get('review_id'))
+        review = self.get_review()
+        serializer.save(author=self.request.user, review=review)
