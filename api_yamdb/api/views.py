@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Title, Review
-from .permissions import (AdminOnly, ListReadOnly, ModeratorOrOwnerOrReadOnly,
+from .permissions import (AdminOnly, ListReadOnly,
                           ReadOnly, OwnerOrReadOnly)
 from .serializers import (
     CategorySerializer,
@@ -225,24 +225,28 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
-        if self.action in ['partial_update', 'delete']:
-            return (ModeratorOrOwnerOrReadOnly(),)
+        if self.action == 'list':
+            return (ReadOnly(),)
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return (StaffOrOwnerOrReadOnly(),)
         return super().get_permissions()
 
     def get_title_id(self):
         """Определеяет ID текущего произведения."""
-        return self.kwargs['title_id']
+        return self.kwargs.get('title_id')
 
     def get_queryset(self):
         """Выбирает отзывы только к текущему произведению."""
-        return Review.objects.filter(title=self.get_title_id())
+        return Review.objects.filter(title_id=self.get_title_id())
 
     def perform_create(self, serializer):
         """Создает новый отзыв, привязывая его к текущему произведению
         и авторизованному пользователю."""
-        serializer.save(author=self.request.user, title=self.get_title_id())
+        title = get_object_or_404(Title, id=self.get_title_id())
+        serializer.save(author=self.request.user, title=title)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
