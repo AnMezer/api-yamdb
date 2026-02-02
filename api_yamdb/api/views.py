@@ -9,9 +9,9 @@ from rest_framework_simplejwt import views as simplejwtviews
 # TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review
-from .permissions import (AdminOnly, ListReadOnly,
-    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
-from .viewsets import CategoryGenreViewset, BaseTitleViewset, ReviewCommentViewset
+from .permissions import AdminOnly, ReadOnly, OwnerOrReadOnly
+from .viewsets import (CategoryGenreViewset, BaseTitleViewset,
+                       ReviewCommentViewset)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
