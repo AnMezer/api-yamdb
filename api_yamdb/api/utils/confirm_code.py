@@ -7,6 +7,7 @@ User = get_user_model()
 
 
 class ConfirmationCodeService:
+    """Класс создания и валидации кода подверждения в кэше."""
     @staticmethod
     def generate_code(user):
         code = str(random.randint(100000, 999999))
