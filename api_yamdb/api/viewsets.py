@@ -2,7 +2,7 @@ from rest_framework import filters, permissions, viewsets, mixins
 from rest_framework.pagination import LimitOffsetPagination
 
 from .permissions import (AdminOnly, ListReadOnly, ReadOnly,
-                          StaffOrOwnerOrReadOnly)
+                          ModeratorOrOwnerOrReadOnly)
 
 
 class BaseViewset(viewsets.GenericViewSet):
@@ -45,5 +45,5 @@ class ReviewCommentViewset(viewsets.ModelViewSet):
         if self.action == 'list':
             return (ReadOnly(),)
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return (StaffOrOwnerOrReadOnly(),)
+            return (ModeratorOrOwnerOrReadOnly(),)
         return super().get_permissions()

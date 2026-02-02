@@ -107,8 +107,7 @@ class UserSerializer(BaseUserSerializer):
     """Сериализатор для пользователей."""
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role']
-                  )
+                  + ['first_name', 'last_name', 'bio', 'role'])
 
 
 class SignUpSerializer(BaseUserSerializer):
@@ -116,21 +115,21 @@ class SignUpSerializer(BaseUserSerializer):
         pass
 
 
-class TokenSerializer(TokenObtainSerializer):
-    # username = serializers.CharField()
+class TokenSerializer(serializers.Serializer):
+    """Кастомный сериализатор для выдачи токенов."""
+    username = serializers.CharField()
     confirmation_code = serializers.CharField()
 
-    class Meta(TokenObtainSerializer):
-        exlude = ('password',)
-        # fields = ('username', 'confirmation_code')
+    def validate(self, attrs):
+        username = attrs.get('username')
+        confirmation_code = attrs.get('confirmation_code')
 
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
+        user = get_object_or_404(User, username=username)
 
-        # Add custom claims
-        # token['name'] = user.name
-        # ...
+        if not ConfirmationCodeService.verify_code(user, confirmation_code):
+            raise serializers.ValidationError(
+                {'confirmation_code': 'Неверный код'}
+            )
 
         return token
 

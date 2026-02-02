@@ -1,16 +1,16 @@
-from django.contrib.auth import get_user_model, tokens
-from django.shortcuts import get_object_or_404, render
-from rest_framework import filters, permissions, viewsets, request, status, mixins
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, permissions, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
-# TokenRefreshView,
 
-from reviews.models import Category, Genre, Title, Review, Comment
-from .permissions import (AdminOnly, ListReadOnly,
-    RetrievReadOnly, ReadOnly, IsAdminOrReadOnly, StaffOrOwnerOrReadOnly)
-from .viewsets import CategoryGenreViewset, BaseTitleViewset, ReviewCommentViewset
+from reviews.models import Category, Genre, Title, Review
+from .permissions import (AdminOnly, ReadOnly, OwnerOrReadOnly,
+                          ModeratorOrOwnerOrReadOnly)
+from .viewsets import (CategoryGenreViewset, BaseTitleViewset,
+                       ReviewCommentViewset)
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -27,18 +27,25 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class TokenView(simplejwtviews.TokenObtainPairView):
-    # def post():
-    queryset = User.objects.all()
+class TokenView(simplejwtviews.TokenViewBase):
+    """Вьюсет для выдачи токенов"""
 
     def get_serializer_class(self):
         return TokenSerializer
-    # serializer_class = TokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            return Response(
+                serializer.validated_data,
+                status=status.HTTP_200_OK
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    # serializer_class = UserSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
 
@@ -105,13 +112,29 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        if self.basename == 'users':
-            super().create(self, request, *args, **kwargs)
-            # serializer.is_valid()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # queryset = User.objects.all()
-    # permission_classes = (permissions.IsAuthenticated)
+    @action(detail=False,
+            permission_classes=(OwnerOrReadOnly),
+            methods=['get', 'patch', 'delete'],
+            url_path='me')
+    def me(self, request):
+        user = request.user
+
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(user,
+                                             data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors,
+                                status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            raise MethodNotAllowed('DELETE')
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CategoryViewSet(CategoryGenreViewset):
@@ -193,7 +216,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return (ReadOnly(),)
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return (StaffOrOwnerOrReadOnly(),)
+            return (ModeratorOrOwnerOrReadOnly(),)
         return super().get_permissions()
 
     def get_review(self):
