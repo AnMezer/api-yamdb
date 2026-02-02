@@ -9,7 +9,7 @@ from django.db.models.base import ModelBase
 
 from reviews.models import User
 
-from .exceptions import CantDeleteData, ModelNotFound
+from .exceptions import CantDeleteDataError, ModelNotFoundError
 
 # Запуск из корня проекта:
 # python .\api_yamdb\manage.py download api_yamdb\static\data
@@ -91,7 +91,7 @@ class Command(BaseCommand):
         except (LookupError, ValueError) as e:
             error_message = (
                 f'Ошибка при поиске модели {table} в приложении {app}. {e}')
-            raise ModelNotFound(error_message)
+            raise ModelNotFoundError(error_message)
 
     def clean_row(
             self, row: dict, table: str) -> dict[str, str | int | None] | None:
@@ -155,7 +155,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.NOTICE(
                 f'Таблица {table_name} очищена'))
         except Exception as e:
-            raise CantDeleteData(f'Ошибка при очистке таблицы {table}: {e}')
+            raise CantDeleteDataError(f'Ошибка при очистке таблицы {table}: {e}')
 
     def delete_data(self, clean: bool, app: str) -> None:
         """Последовательно отправляет запрос на очистку таблиц в БД

@@ -1,6 +1,6 @@
-class ModelNotFound(Exception):
+class ModelNotFoundError(Exception):
     """Модель в приложении не найдена"""
 
 
-class CantDeleteData(Exception):
+class CantDeleteDataError(Exception):
     """Ошибка при удалении данных таблицы"""
