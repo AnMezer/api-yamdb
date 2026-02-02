@@ -1,15 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, permissions, viewsets, status, mixins
+from rest_framework import filters, permissions, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
-# TokenRefreshView,
 
 from reviews.models import Category, Genre, Title, Review
-from .permissions import AdminOnly, ReadOnly, OwnerOrReadOnly
+from .permissions import (AdminOnly, ReadOnly, OwnerOrReadOnly,
+                          ModeratorOrOwnerOrReadOnly)
 from .viewsets import (CategoryGenreViewset, BaseTitleViewset,
                        ReviewCommentViewset)
 from .serializers import (
@@ -231,7 +231,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return (ReadOnly(),)
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return (StaffOrOwnerOrReadOnly(),)
+            return (ModeratorOrOwnerOrReadOnly(),)
         return super().get_permissions()
 
     def get_review(self):
