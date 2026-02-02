@@ -107,8 +107,8 @@ class UserSerializer(BaseUserSerializer):
     """Сериализатор для пользователей."""
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-            + ['first_name', 'last_name', 'bio', 'role']
-        )
+                  + ['first_name', 'last_name', 'bio', 'role']
+                  )
 
 
 class SignUpSerializer(BaseUserSerializer):
@@ -117,18 +117,19 @@ class SignUpSerializer(BaseUserSerializer):
 
 
 class TokenSerializer(TokenObtainSerializer):
-    #username = serializers.CharField()
+    # username = serializers.CharField()
     confirmation_code = serializers.CharField()
 
     class Meta(TokenObtainSerializer):
         exlude = ('password',)
-        #fields = ('username', 'confirmation_code')
+        # fields = ('username', 'confirmation_code')
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
 
         # Add custom claims
-        #token['name'] = user.name
+        # token['name'] = user.name
         # ...
 
         return token
@@ -172,8 +173,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
     author = serializers.StringRelatedField(
         source='author.username', read_only=True)
-    review_id = serializers.PrimaryKeyRelatedField(read_only=True)
+    review = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'review_id')
+        fields = ('id', 'text', 'author', 'pub_date', 'review')
         model = Comment
