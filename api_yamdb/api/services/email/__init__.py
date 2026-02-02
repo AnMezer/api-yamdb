@@ -1,0 +1,1 @@
+from .mail_sender import sender_mail  # noqa
