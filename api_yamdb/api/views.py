@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Title, Review
-from .permissions import (AdminOnly, ListReadOnly,
+from .permissions import (AdminOnly, CustomBasePermission, ListReadOnly,
                           ReadOnly, OwnerOrReadOnly)
 from .serializers import (
     CategorySerializer,
@@ -231,7 +231,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return (ReadOnly(),)
         elif self.action in ['update', 'partial_update', 'destroy']:
-            return (StaffOrOwnerOrReadOnly(),)
+            return (OwnerOrReadOnly(),)
         return super().get_permissions()
 
     def get_title_id(self):
@@ -263,7 +263,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Выбирает комментарии только для отзыва <review_id>."""
-        return self.get_review.comments.all()
+        return self.get_review().comments.all()
 
     def perform_create(self, serializer):
         """Создает новый комментарий, привязывая его к отзыву и
