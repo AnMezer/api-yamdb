@@ -1,3 +1,4 @@
+from ast import Name
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.shortcuts import get_object_or_404
@@ -18,14 +19,22 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class NameSlugSerialiser(serializers.ModelSerializer):
+    """Базовый сериализатор для полей name и slug."""
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        fields = ('name', 'slug')
+        abstract = True
+
+
+class CategorySerializer(NameSlugSerialiser):
     """Сериализатор для категорий.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
@@ -37,29 +46,26 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Category
 
 
-class GenreSerializer(serializers.ModelSerializer):
+class GenreSerializer(NameSlugSerialiser):
     """Сериализатор для жанров.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
             UniqueValidator(queryset=Genre.objects.all(),
-                            message='Жанр с таким slug уже существует.'),
+                            message='Такой slug уже существует.')
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Genre
 
 
