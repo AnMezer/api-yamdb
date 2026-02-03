@@ -19,6 +19,8 @@ from .serializers import (
     TitleSerializer,
     TokenSerializer,
     UserSerializer,
+    TitleReadSerializer,
+    TitleModifySerializer
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
@@ -174,6 +176,12 @@ class TitleViewSet(BaseTitleViewset):
     pagination_class = LimitOffsetPagination
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_serializer_class(self):
+        """Выбирает сериализатор в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return TitleReadSerializer
+        return TitleModifySerializer
 
     def get_permissions(self):
         """Устанавливает права доступа"""

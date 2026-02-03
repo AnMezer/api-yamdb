@@ -69,12 +69,12 @@ class GenreSerializer(NameSlugSerialiser):
         model = Genre
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для произведений."""
+class TitleModifySerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и изменения произведений."""
 
     genre = serializers.SlugRelatedField(slug_field='slug',
                                          queryset=Genre.objects.all(),
-                                         many=True)
+                                         many=True, required=True)
     category = serializers.SlugRelatedField(slug_field='slug',
                                             queryset=Category.objects.all())
     name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
@@ -82,18 +82,25 @@ class TitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'description',
-                  'rating', 'genre', 'category')
+                  'genre', 'category')
         read_only_fields = ('id', 'rating')
 
     def to_representation(self, instance):
-        """Заменяет слаги на объекты"""
+        return TitleReadSerializer(instance, context=self.context).data
 
-        representation = super().to_representation(instance)
-        representation['genre'] = GenreSerializer(instance.genre.all(),
-                                                  many=True).data
-        representation['category'] = CategorySerializer(instance.category).data
 
-        return representation
+class TitleReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения произведений."""
+
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        model = Title
+        fields = ('id', 'name', 'year', 'description',
+                  'rating', 'genre', 'category')
+        read_only_fields = ('id', 'rating')
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
