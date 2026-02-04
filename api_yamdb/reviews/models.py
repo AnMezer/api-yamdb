@@ -82,13 +82,24 @@ class Title(models.Model):
         return f'{self.name} ({self.year})'
 
 
-class Review(models.Model):
+class BaseModel(models.Model):
+    """Базовая абстрактная модель для моделей Review и Comment."""
+    text = models.TextField()
+    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="%(class)s_authors")
+
+    class Meta:
+        abstract = True
+        ordering = ('-pub_date', )
+
+    def __str__(self):
+        return self.text
+
+
+class Review(BaseModel):
     """Класс для работы с отзывами на произведения."""
 
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reviews')
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     # Оценка произведению - целое число от 1 до 10.
     score = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(MIN_SCORE),
@@ -98,8 +109,7 @@ class Review(models.Model):
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(BaseModel.Meta):
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
         constraints = [
@@ -109,24 +119,13 @@ class Review(models.Model):
             )
         ]
 
-    def __str__(self):
-        return self.text
 
-
-class Comment(models.Model):
+class Comment(BaseModel):
     """Класс для работы с комментариями на отзывы пользователей."""
 
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments')
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     review = models.ForeignKey(
         Review, on_delete=models.CASCADE, related_name='comments')
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(BaseModel.Meta):
         verbose_name = 'комментарий'
         verbose_name_plural = 'комментарии'
-
-    def __str__(self):
-        return self.text
