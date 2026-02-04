@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.models import Group
 
 from .models import Category, Comment, Genre, Review, Title, User
+
+admin.site.unregister(Group)
 
 
 class CategoriesGenresAdmin(admin.ModelAdmin):
@@ -26,10 +29,14 @@ class GenresAdmin(CategoriesGenresAdmin):
 
 @admin.register(Title)
 class TitlesAdmin(admin.ModelAdmin):
-    list_display = ('name', 'year', 'rating', 'description',)
-    list_filter = ('year', 'rating', 'genre', 'category')
+    list_display = ('name', 'year', 'rating', 'description', 'get_genres')
+    list_filter = ('genre', 'category', 'rating')
     search_fields = ('name', 'slug')
     filter_horizontal = ('genre',)
+
+    def get_genres(self, obj):
+        """Вывод жанров через запятую."""
+        return ', '.join([genre.name for genre in obj.genre.all()])
 
 
 @admin.register(Review)
