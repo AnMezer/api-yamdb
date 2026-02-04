@@ -9,7 +9,7 @@ from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Review, Title
 
-from .permissions import AdminOnly, OwnerOrReadOnly, ReadOnly
+from .permissions import AdminOnly, OwnerOrReadOnly
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -67,7 +67,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == 'me':
             return (OwnerOrReadOnly(),)
         else:
-            return (AdminOnly(),)
+            return (permissions.IsAuthenticated(), AdminOnly(),)
 
     def create(self, request, *args, **kwargs):
 
@@ -172,13 +172,13 @@ class TitleViewSet(BaseTitleViewset):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
+    permission_classes = (permissions.IsAuthenticated, AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action in ['list', 'retrieve']:
-            return (ReadOnly(),)
+            return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
 
     def get_queryset(self):
