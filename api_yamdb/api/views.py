@@ -10,7 +10,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
-from .permissions import AdminOnly, OwnerOrReadOnly, ReadOnly
+from .permissions import AdminOnly, OwnerOrReadOnly
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -70,7 +70,7 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == 'me':
             return (OwnerOrReadOnly(),)
         else:
-            return (AdminOnly(),)
+            return (permissions.IsAuthenticated(), AdminOnly(),)
 
     def create(self, request, *args, **kwargs):
 
@@ -172,6 +172,9 @@ class GenreViewSet(CategoryGenreViewset):
 class TitleViewSet(BaseTitleViewset):
     """Вьюсет для работы с произведениями."""
 
+    queryset = Title.objects.all()
+    serializer_class = TitleSerializer
+    pagination_class = LimitOffsetPagination
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter,)
@@ -187,7 +190,7 @@ class TitleViewSet(BaseTitleViewset):
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action in ['list', 'retrieve']:
-            return (ReadOnly(),)
+            return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
 
 

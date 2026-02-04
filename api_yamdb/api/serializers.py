@@ -107,7 +107,7 @@ class BaseUserSerializer(serializers.ModelSerializer):
     """Базовый сериализатор пользователей."""
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ('username', 'email')
 
     def validate_username(self, value):
         username = value
@@ -128,7 +128,15 @@ class UserSerializer(BaseUserSerializer):
 
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
+                  + ('first_name', 'last_name', 'bio', 'role'))
+
+    def get_fields(self):
+        fields = super().get_fields()
+        view = self.context.get('view')
+
+        if view and view.action == 'me':
+            fields['role'].read_only = True
+        return fields
 
     def validate_role(self, value):
         role = value
@@ -141,22 +149,6 @@ class UserSerializer(BaseUserSerializer):
             )
 
         return value
-
-    def get_fields(self):
-        fields = super().get_fields()
-        view = self.context.get('view')
-
-        if view and view.action == 'me':
-            fields['role'].read_only = True
-        return fields
-
-
-class UserMeSerializer(BaseUserSerializer):
-    """Сериализатор для пользователей."""
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
 
 
 class SignUpSerializer(BaseUserSerializer):

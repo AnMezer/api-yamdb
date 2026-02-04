@@ -3,9 +3,7 @@ from rest_framework.pagination import LimitOffsetPagination
 
 from .permissions import (
     AdminOnly,
-    ListReadOnly,
     ModeratorOrOwnerOrReadOnly,
-    ReadOnly,
 )
 
 
@@ -16,7 +14,7 @@ class BaseViewset(viewsets.GenericViewSet):
 
 class AdminOnlyViewset(BaseViewset):
     """Базовый вьюсет для вьюсетов с доступом только администратору"""
-    permission_classes = (AdminOnly,)
+    permission_classes = (permissions.IsAuthenticated, AdminOnly,)
 
 
 class CategoryGenreViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -29,7 +27,7 @@ class CategoryGenreViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action == 'list':
-            return (ListReadOnly(),)
+            return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
 
 
@@ -47,7 +45,7 @@ class ReviewCommentViewset(viewsets.ModelViewSet):
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action == 'list':
-            return (ReadOnly(),)
+            return (permissions.IsAuthenticatedOrReadOnly(),)
         elif self.action in ['update', 'partial_update', 'destroy']:
             return (ModeratorOrOwnerOrReadOnly(),)
         return super().get_permissions()
