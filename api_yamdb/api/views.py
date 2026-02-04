@@ -6,6 +6,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
+from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
@@ -16,7 +17,6 @@ from .serializers import (
     GenreSerializer,
     ReviewSerializer,
     SignUpSerializer,
-    TitleSerializer,
     TokenSerializer,
     UserSerializer,
     TitleReadSerializer,
@@ -29,6 +29,7 @@ from .viewsets import (
     CategoryGenreViewset,
     ReviewCommentViewset,
 )
+from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -171,11 +172,11 @@ class GenreViewSet(CategoryGenreViewset):
 class TitleViewSet(BaseTitleViewset):
     """Вьюсет для работы с произведениями."""
 
-    queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    pagination_class = LimitOffsetPagination
     permission_classes = (AdminOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter,)
+    queryset = Title.objects.all()
+    filterset_class = TitleFilter
 
     def get_serializer_class(self):
         """Выбирает сериализатор в зависимости от метода запроса."""
@@ -188,9 +189,8 @@ class TitleViewSet(BaseTitleViewset):
         if self.action in ['list', 'retrieve']:
             return (ReadOnly(),)
         return super().get_permissions()
-
+    """
     def get_queryset(self):
-        """Фильтрует ответ по параметрам запроса."""
         queryset = Title.objects.all()
         params = self.request.query_params
         genre = params.get('genre', None)
@@ -207,7 +207,7 @@ class TitleViewSet(BaseTitleViewset):
         if name:
             queryset = queryset.filter(name__contains=name)
         return queryset
-
+    """
 
 class ReviewViewSet(ReviewCommentViewset):
     """Вьюсет для работы с отзывами к произведению <title_id>."""
