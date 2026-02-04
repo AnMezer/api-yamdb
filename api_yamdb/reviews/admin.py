@@ -37,6 +37,7 @@ class TitlesAdmin(admin.ModelAdmin):
     def get_genres(self, obj):
         """Вывод жанров через запятую."""
         return ', '.join([genre.name for genre in obj.genre.all()])
+    get_genres.short_description = 'Жанры'
 
 
 @admin.register(Review)
