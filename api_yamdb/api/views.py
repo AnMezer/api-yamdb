@@ -189,25 +189,7 @@ class TitleViewSet(BaseTitleViewset):
         if self.action in ['list', 'retrieve']:
             return (ReadOnly(),)
         return super().get_permissions()
-    """
-    def get_queryset(self):
-        queryset = Title.objects.all()
-        params = self.request.query_params
-        genre = params.get('genre', None)
-        category = params.get('category', None)
-        year = params.get('year', None)
-        name = params.get('name', None)
 
-        if genre:
-            queryset = queryset.filter(genre__slug=genre)
-        if category:
-            queryset = queryset.filter(category__slug=category)
-        if year:
-            queryset = queryset.filter(year=year)
-        if name:
-            queryset = queryset.filter(name__contains=name)
-        return queryset
-    """
 
 class ReviewViewSet(ReviewCommentViewset):
     """Вьюсет для работы с отзывами к произведению <title_id>."""
