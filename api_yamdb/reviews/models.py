@@ -6,6 +6,8 @@ from django.db import models
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
+    MIN_SCORE,
+    MAX_SCORE
 )
 
 from .base_models import NameSlugBaseModel
@@ -88,8 +90,10 @@ class Review(models.Model):
         User, on_delete=models.CASCADE, related_name='reviews')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     # Оценка произведению - целое число от 1 до 10.
-    score = models.IntegerField(validators=[MinValueValidator(1),
-                                            MaxValueValidator(10)])
+    score = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(MIN_SCORE),
+                    MaxValueValidator(MAX_SCORE)]
+    )
     # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
         Title, on_delete=models.CASCADE, related_name='reviews')
