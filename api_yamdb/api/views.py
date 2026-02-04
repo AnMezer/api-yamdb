@@ -20,13 +20,13 @@ from .serializers import (
     TokenSerializer,
     UserSerializer,
     TitleReadSerializer,
-    TitleModifySerializer
+    TitleModifySerializer,
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
 from .viewsets import (
-    BaseTitleViewset,
-    CategoryGenreViewset,
+    RestrictedMethodsViewset,
+    SlugNameViewset,
     ReviewCommentViewset,
 )
 from .filters import TitleFilter
@@ -155,30 +155,26 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CategoryViewSet(CategoryGenreViewset):
+class CategoryViewSet(SlugNameViewset):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(CategoryGenreViewset):
+class GenreViewSet(SlugNameViewset):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
 
-class TitleViewSet(BaseTitleViewset):
+class TitleViewSet(RestrictedMethodsViewset):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (AdminOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
-    filter_backends = (DjangoFilterBackend, filters.OrderingFilter,)
-    queryset = Title.objects.all()
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, AdminOnly,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filterset_class = TitleFilter
 
     def get_serializer_class(self):
@@ -189,7 +185,7 @@ class TitleViewSet(BaseTitleViewset):
 
     def get_permissions(self):
         """Устанавливает права доступа"""
-        if self.action in ['list', 'retrieve']:
+        if self.action in ('list', 'retrieve'):
             return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
 
