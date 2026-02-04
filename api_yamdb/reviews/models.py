@@ -9,6 +9,7 @@ from constants.constants import (
 )
 
 from .base_models import NameSlugBaseModel
+from .validators import validate_current_year
 
 
 class User(AbstractUser):
@@ -62,15 +63,20 @@ class Genre(NameSlugBaseModel):
 
 class Title(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
-    year = models.PositiveSmallIntegerField()
-    # Заглушка, нужно сделать расчет рейтинга из модели Review
-    rating = models.PositiveSmallIntegerField(default=None, null=True)
+    year = models.SmallIntegerField(
+        'Год выпуска',
+        validators=[validate_current_year])
+
+    # из ТЗ: из пользовательских оценок формируется
+    # усреднённая оценка произведения — рейтинг (целое число)
+    rating = models.PositiveSmallIntegerField('Рейтинг', default=None,
+                                              null=True)
     description = models.TextField('Описание', blank=True)
-    genre = models.ManyToManyField(Genre, related_name='titles')
-    category = models.ForeignKey(Category,
-                                 on_delete=models.SET_NULL,
-                                 related_name='titles',
-                                 null=True)
+    genre = models.ManyToManyField(Genre, related_name='titles',
+                                   verbose_name='Жанр')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL,
+                                 related_name='titles', null=True,
+                                 verbose_name='Категория')
 
     class Meta:
         verbose_name = 'произведение'
