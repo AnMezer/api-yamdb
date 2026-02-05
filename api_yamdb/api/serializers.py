@@ -1,3 +1,4 @@
+from ast import Name
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.shortcuts import get_object_or_404
@@ -18,14 +19,22 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class NameSlugSerialiser(serializers.ModelSerializer):
+    """Базовый сериализатор для полей name и slug."""
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        fields = ('name', 'slug')
+        abstract = True
+
+
+class CategorySerializer(NameSlugSerialiser):
     """Сериализатор для категорий.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
@@ -37,40 +46,54 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Category
 
 
-class GenreSerializer(serializers.ModelSerializer):
+class GenreSerializer(NameSlugSerialiser):
     """Сериализатор для жанров.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
             UniqueValidator(queryset=Genre.objects.all(),
-                            message='Жанр с таким slug уже существует.'),
+                            message='Такой slug уже существует.')
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Genre
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для произведений."""
+class TitleModifySerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и изменения произведений."""
 
     genre = serializers.SlugRelatedField(slug_field='slug',
                                          queryset=Genre.objects.all(),
-                                         many=True)
+                                         many=True, required=True)
     category = serializers.SlugRelatedField(slug_field='slug',
                                             queryset=Category.objects.all())
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        model = Title
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category')
+        read_only_fields = ('id', 'rating')
+
+    def to_representation(self, instance):
+        return TitleReadSerializer(instance, context=self.context).data
+
+
+class TitleReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения произведений."""
+
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
     name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
 
     class Meta:
@@ -79,22 +102,23 @@ class TitleSerializer(serializers.ModelSerializer):
                   'rating', 'genre', 'category')
         read_only_fields = ('id', 'rating')
 
-    def to_representation(self, instance):
-        """Заменяет слаги на объекты"""
-
-        representation = super().to_representation(instance)
-        representation['genre'] = GenreSerializer(instance.genre.all(),
-                                                  many=True).data
-        representation['category'] = CategorySerializer(instance.category).data
-
-        return representation
-
 
 class BaseUserSerializer(serializers.ModelSerializer):
     """Базовый сериализатор пользователей."""
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ('username', 'email')
+
+    def validate(self, data):
+        username = data.get('username')
+        email = data.get('email')
+        user = User.objects.filter(username=username).first()
+
+        if user and user.email != email:
+            raise serializers.ValidationError(
+                {'error': 'Учетные данные не верны.'})
+
+        return data
 
     def validate_username(self, value):
         username = value
@@ -115,7 +139,15 @@ class UserSerializer(BaseUserSerializer):
 
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
+                  + ('first_name', 'last_name', 'bio', 'role'))
+
+    def get_fields(self):
+        fields = super().get_fields()
+        view = self.context.get('view')
+
+        if view and view.action == 'change_me':
+            fields['role'].read_only = True
+        return fields
 
     def validate_role(self, value):
         role = value
@@ -128,22 +160,6 @@ class UserSerializer(BaseUserSerializer):
             )
 
         return value
-
-    def get_fields(self):
-        fields = super().get_fields()
-        view = self.context.get('view')
-
-        if view and view.action == 'me':
-            fields['role'].read_only = True
-        return fields
-
-
-class UserMeSerializer(BaseUserSerializer):
-    """Сериализатор для пользователей."""
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
 
 
 class SignUpSerializer(BaseUserSerializer):
