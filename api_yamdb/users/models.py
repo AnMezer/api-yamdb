@@ -9,6 +9,7 @@ from constants.constants import (
 
 
 class User(AbstractUser):
+    """Кастомный класс пользователя."""
     class Role(models.TextChoices):
         USER = 'user'
         ADMIN = 'admin'
@@ -30,6 +31,10 @@ class User(AbstractUser):
             raise ValidationError('Данное имя пользователя запрещено')
 
         return username
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     @property
     def is_admin(self):
