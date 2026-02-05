@@ -1,34 +1,14 @@
 import random
 
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
+
+from constants.constants import MIN_RANDOM_VALUE, MAX_RANDOM_VALUE
 
 User = get_user_model()
 
 
-class ConfirmationCodeService:
+class GeneratingCodeService:
     @staticmethod
-    def generate_code(user):
-        code = str(random.randint(100000, 999999))
-
-        cache_key = f'confirmation_code_{user.email}'
-        cache.set(cache_key, {
-            'code': code,
-            'user_id': user.id
-        }, timeout=300)
-
+    def generate_code():
+        code = str(random.randint(MIN_RANDOM_VALUE, MAX_RANDOM_VALUE))
         return code
-
-    @staticmethod
-    def verify_code(user, code):
-        cache_key = f'confirmation_code_{user.email}'
-        cached_data = cache.get(cache_key)
-
-        if not cached_data:
-            return None
-
-        if cached_data['code'] == code:
-            cache.delete(cache_key)
-            return User.objects.get(id=cached_data['user_id'])
-
-        return None
