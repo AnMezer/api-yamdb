@@ -10,7 +10,7 @@ from constants.constants import (
     MAX_SCORE
 )
 
-from .base_models import NameSlugBaseModel
+from .base_models import NameSlugBaseModel, PublicationBaseModel
 
 
 class User(AbstractUser):
@@ -82,50 +82,41 @@ class Title(models.Model):
         return f'{self.name} ({self.year})'
 
 
-class BaseModel(models.Model):
-    """Базовая абстрактная модель для моделей Review и Comment."""
-    text = models.TextField()
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="%(class)s_authors")
-
-    class Meta:
-        abstract = True
-        ordering = ('-pub_date', )
-
-    def __str__(self):
-        return self.text
-
-
-class Review(BaseModel):
+class Review(PublicationBaseModel):
     """Класс для работы с отзывами на произведения."""
 
     # Оценка произведению - целое число от 1 до 10.
     score = models.PositiveSmallIntegerField(
+        'Оценка',
         validators=[MinValueValidator(MIN_SCORE),
                     MaxValueValidator(MAX_SCORE)]
     )
     # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='reviews')
+        'Название произведения',
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
 
-    class Meta(BaseModel.Meta):
+    class Meta(PublicationBaseModel.Meta):
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
-        constraints = [
-            models.UniqueConstraint(
-                fields=('title', 'author', ),
-                name='unique review'
-            )
+        constraints = [models.UniqueConstraint(
+            fields=('title', 'author'), name='unique review')
         ]
 
 
-class Comment(BaseModel):
+class Comment(PublicationBaseModel):
     """Класс для работы с комментариями на отзывы пользователей."""
 
     review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments')
+        'Комментарий',
+        Review,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
 
-    class Meta(BaseModel.Meta):
+    class Meta(PublicationBaseModel.Meta):
         verbose_name = 'комментарий'
         verbose_name_plural = 'комментарии'
