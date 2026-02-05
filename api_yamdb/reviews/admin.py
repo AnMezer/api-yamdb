@@ -1,8 +1,7 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 
-from .models import Category, Comment, Genre, Review, Title, User
+from .models import Category, Comment, Genre, Review, Title
 
 admin.site.unregister(Group)
 
@@ -11,10 +10,6 @@ class CategoriesGenresAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     list_filter = ('name',)
     search_fields = ('name', 'slug')
-
-
-# Register your models here.
-admin.site.register(User, UserAdmin)
 
 
 @admin.register(Category)

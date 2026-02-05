@@ -1,11 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.conf import settings
 
 from constants.constants import CHAR_FIELD_LENGTH, SLUG_FIELD_LENGTH
 
 
-# User = get_user_model()
+User = get_user_model()
+
 
 class NameSlugBaseModel(models.Model):
     name = models.CharField('Название', max_length=CHAR_FIELD_LENGTH)
@@ -26,8 +26,7 @@ class PublicationBaseModel(models.Model):
     text = models.TextField('Текст')
     pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        # User,
+        User,
         on_delete=models.CASCADE,
         related_name='%(class)s_authors',
         verbose_name='Автор')

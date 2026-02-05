@@ -1,5 +1,4 @@
-from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -13,40 +12,7 @@ from constants.constants import (
 from .base_models import NameSlugBaseModel, PublicationBaseModel
 from .validators import validate_current_year
 
-
-class User(AbstractUser):
-    class Role(models.TextChoices):
-        USER = 'user'
-        ADMIN = 'admin'
-        MODER = 'moderator'
-    email = models.EmailField(unique=True)
-    bio = models.TextField('Биография', blank=True)
-    role = models.CharField(
-        'Роль',
-        choices=Role,
-        default=Role.USER,
-        blank=True,
-        max_length=CHAR_FIELD_LENGTH
-    )
-
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-
-        if username.lower() == FORBIDDEN_USERNAME:
-            raise ValidationError('Данное имя пользователя запрещено')
-
-        return username
-
-    @property
-    def is_admin(self):
-        return self.role == self.Role.ADMIN or self.is_superuser
-
-    @property
-    def is_moder(self):
-        return self.role == self.Role.ADMIN or self.role == self.Role.MODER
-
-    def __str__(self):
-        return self.username
+User = get_user_model()
 
 
 class Category(NameSlugBaseModel):

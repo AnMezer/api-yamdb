@@ -109,17 +109,6 @@ class BaseUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email')
 
-    def validate(self, data):
-        username = data.get('username')
-        email = data.get('email')
-        user = User.objects.filter(username=username).first()
-
-        if user and user.email != email:
-            raise serializers.ValidationError(
-                {'error': 'Учетные данные не верны.'})
-
-        return data
-
     def validate_username(self, value):
         username = value
 
@@ -131,6 +120,17 @@ class BaseUserSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+    def validate(self, data):
+        username = data.get('username')
+        email = data.get('email')
+        user = User.objects.filter(username=username).first()
+
+        if user and user.email != email:
+            raise serializers.ValidationError(
+                {'error': 'Учетные данные не верны.'})
+
+        return data
 
 
 class UserSerializer(BaseUserSerializer):
