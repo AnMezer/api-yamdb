@@ -6,6 +6,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
+from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
@@ -16,17 +17,19 @@ from .serializers import (
     GenreSerializer,
     ReviewSerializer,
     SignUpSerializer,
-    TitleSerializer,
     TokenSerializer,
     UserSerializer,
+    TitleReadSerializer,
+    TitleModifySerializer,
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
 from .viewsets import (
-    BaseTitleViewset,
-    CategoryGenreViewset,
+    RestrictedMethodsViewset,
+    SlugNameViewset,
     ReviewCommentViewset,
 )
+from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -142,53 +145,39 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CategoryViewSet(CategoryGenreViewset):
+class CategoryViewSet(SlugNameViewset):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(CategoryGenreViewset):
+class GenreViewSet(SlugNameViewset):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
 
-class TitleViewSet(BaseTitleViewset):
+class TitleViewSet(RestrictedMethodsViewset):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.IsAuthenticated, AdminOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, AdminOnly,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filterset_class = TitleFilter
+
+    def get_serializer_class(self):
+        """Выбирает сериализатор в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return TitleReadSerializer
+        return TitleModifySerializer
 
     def get_permissions(self):
         """Устанавливает права доступа"""
-        if self.action in ['list', 'retrieve']:
+        if self.action in ('list', 'retrieve'):
             return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
-
-    def get_queryset(self):
-        """Фильтрует ответ по параметрам запроса."""
-        queryset = Title.objects.all()
-        params = self.request.query_params
-        genre = params.get('genre', None)
-        category = params.get('category', None)
-        year = params.get('year', None)
-        name = params.get('name', None)
-
-        if genre:
-            queryset = queryset.filter(genre__slug=genre)
-        if category:
-            queryset = queryset.filter(category__slug=category)
-        if year:
-            queryset = queryset.filter(year=year)
-        if name:
-            queryset = queryset.filter(name__contains=name)
-        return queryset
 
 
 class ReviewViewSet(ReviewCommentViewset):
