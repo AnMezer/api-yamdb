@@ -186,18 +186,19 @@ class ReviewViewSet(ReviewCommentViewset):
     serializer_class = ReviewSerializer
     pagination_class = LimitOffsetPagination
 
-    def get_title_id(self):
-        """Определеяет ID текущего произведения."""
-        return self.kwargs.get('title_id')
+    def get_title(self):
+        """Возвращает объект текущего произведения."""
+        title_id = self.kwargs.get('title_id')
+        return get_object_or_404(Title, id=title_id)
 
     def get_queryset(self):
         """Выбирает отзывы только к текущему произведению."""
-        return Review.objects.filter(title_id=self.get_title_id())
+        return self.get_title().reviews.all()
 
     def perform_create(self, serializer):
         """Создает новый отзыв, привязывая его к текущему произведению
         и авторизованному пользователю."""
-        title = get_object_or_404(Title, id=self.get_title_id())
+        title = self.get_title()
         serializer.save(author=self.request.user, title=title)
 
 
@@ -208,12 +209,13 @@ class CommentViewSet(ReviewCommentViewset):
     pagination_class = LimitOffsetPagination
 
     def get_review(self):
-        """Определяет ID текущего отзыва."""
+        """Возвращает объект текущего отзыва."""
         review_id = self.kwargs.get('review_id')
-        return get_object_or_404(Review, id=review_id)
+        title_id = self.kwargs.get('title_id')
+        return get_object_or_404(Review, id=review_id, title=title_id)
 
     def get_queryset(self):
-        """Выбирает комментарии только для отзыва <review_id>."""
+        """Выбирает комментарии только для текущего отзыва."""
         return self.get_review().comments.all()
 
     def perform_create(self, serializer):

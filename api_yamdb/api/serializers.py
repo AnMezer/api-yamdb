@@ -214,9 +214,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         view = self.context.get('view')
         if request.method == 'POST':
             title_id = view.kwargs.get('title_id')
-            reviewer = Review.objects.filter(
+            review = Review.objects.filter(
                 author=request.user, title_id=title_id)
-            if reviewer.exists():
+            if review.exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение.')
 
@@ -226,8 +226,11 @@ class ReviewSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для комментариев к отзывам."""
 
-    author = serializers.StringRelatedField(
-        source='author.username', read_only=True)
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True,
+        many=False
+    )
     review = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
