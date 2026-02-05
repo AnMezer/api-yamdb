@@ -6,27 +6,30 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
+from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
-from .permissions import AdminOnly, OwnerOrReadOnly
+from .permissions import AdminOnly
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
     GenreSerializer,
     ReviewSerializer,
     SignUpSerializer,
-    TitleSerializer,
     TokenSerializer,
     UserSerializer,
+    TitleReadSerializer,
+    TitleModifySerializer,
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
 from .viewsets import (
-    BaseTitleViewset,
-    CategoryGenreViewset,
+    RestrictedMethodsViewset,
+    SlugNameViewset,
     ReviewCommentViewset,
 )
+from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -57,24 +60,46 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
 
     def get_serializer_class(self):
-        if self.basename != 'signup_user':
+        if self.basename != 'signup':
             return UserSerializer
         return SignUpSerializer
 
     def get_permissions(self):
-        if self.basename == 'signup_user':
+        if self.basename == 'signup':
             return (permissions.AllowAny(),)
-        elif self.action == 'me':
-            return (OwnerOrReadOnly(),)
+        elif self.action in ['me', 'change_me', 'delete_for_me_not_allowed']:
+            return (permissions.IsAuthenticated(),)
         else:
             return (permissions.IsAuthenticated(), AdminOnly(),)
+
+    @action(detail=False,
+            permission_classes=(permissions.IsAuthenticated,),
+            methods=['get'],
+            url_path='me')
+    def me(self, request):
+        user = request.user
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @me.mapping.patch
+    def change_me(self, request):
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)
+
+    @me.mapping.delete
+    def delete_for_me_not_allowed(self, request):
+        """Перехватываю delete запрос, иначе его перехватит users."""
+        raise MethodNotAllowed('DELETE')
 
     def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
 
-        if self.basename == 'signup_user':
-            username = serializer.initial_data.get('username', None)
+        if self.basename == 'signup':
+            username = request.data.get('username')
             user = User.objects.filter(username=username).first()
             if serializer.is_valid():
                 username = serializer.validated_data.get('username')
@@ -90,15 +115,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 try:
                     sender_mail(code, email)
-                    return Response(
-                        serializer.data, status=200, headers=headers
-                    )
+                    return Response(serializer.data, headers=headers)
                 except Exception as e:
                     return Response(
                         {'username': username,
                          'email': email,
-                         'error': f'Письмо с кодом не отправлено: {str(e)}'},
-                        status=status.HTTP_200_OK
+                         'error': f'Письмо с кодом не отправлено: {str(e)}'}
                     )
             elif user and (
                     user.email == serializer.initial_data.get('email', None)):
@@ -107,20 +129,13 @@ class UserViewSet(viewsets.ModelViewSet):
                     sender_mail(code, user.email)
                     return Response(
                         {'username': user.username,
-                         'email': user.email},
-                        status=status.HTTP_200_OK
+                         'email': user.email}
                     )
                 except Exception as e:
                     return Response(
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
-            elif user and (
-                    user.email != serializer.initial_data.get('email', None)):
-                return Response(
-                    {'error': 'Учетные данные не верны'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
         else:
             if serializer.is_valid():
                 serializer.save()
@@ -129,76 +144,40 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False,
-            permission_classes=(OwnerOrReadOnly),
-            methods=['get', 'patch', 'delete'],
-            url_path='me')
-    def me(self, request):
-        user = request.user
 
-        if request.method == 'PATCH':
-            serializer = self.get_serializer(user,
-                                             data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors,
-                                status=status.HTTP_400_BAD_REQUEST)
-        elif request.method == 'DELETE':
-            raise MethodNotAllowed('DELETE')
-
-        serializer = self.get_serializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-class CategoryViewSet(CategoryGenreViewset):
+class CategoryViewSet(SlugNameViewset):
     """Вьюсет для работы с категориями."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(CategoryGenreViewset):
+class GenreViewSet(SlugNameViewset):
     """Вьюсет для работы с жанрами."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
 
-class TitleViewSet(BaseTitleViewset):
+class TitleViewSet(RestrictedMethodsViewset):
     """Вьюсет для работы с произведениями."""
 
     queryset = Title.objects.all()
-    serializer_class = TitleSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.IsAuthenticated, AdminOnly,)
-    http_method_names = ['get', 'post', 'patch', 'delete']
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly, AdminOnly,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filterset_class = TitleFilter
+
+    def get_serializer_class(self):
+        """Выбирает сериализатор в зависимости от метода запроса."""
+        if self.request.method == 'GET':
+            return TitleReadSerializer
+        return TitleModifySerializer
 
     def get_permissions(self):
         """Устанавливает права доступа"""
-        if self.action in ['list', 'retrieve']:
+        if self.action in ('list', 'retrieve'):
             return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
-
-    def get_queryset(self):
-        """Фильтрует ответ по параметрам запроса."""
-        queryset = Title.objects.all()
-        params = self.request.query_params
-        genre = params.get('genre', None)
-        category = params.get('category', None)
-        year = params.get('year', None)
-        name = params.get('name', None)
-
-        if genre:
-            queryset = queryset.filter(genre__slug=genre)
-        if category:
-            queryset = queryset.filter(category__slug=category)
-        if year:
-            queryset = queryset.filter(year=year)
-        if name:
-            queryset = queryset.filter(name__contains=name)
-        return queryset
 
 
 class ReviewViewSet(ReviewCommentViewset):

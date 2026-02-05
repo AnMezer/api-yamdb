@@ -31,9 +31,3 @@ class AdminOnly(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         return self.has_permission(request, view)
-
-
-class OwnerOrReadOnly(ModeratorOrOwnerOrReadOnly):
-
-    def has_object_permission(self, request, view, obj):
-        return False
