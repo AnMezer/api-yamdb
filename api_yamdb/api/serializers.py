@@ -96,6 +96,17 @@ class BaseUserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email')
 
+    def validate(self, data):
+        username = data.get('username')
+        email = data.get('email')
+        user = User.objects.filter(username=username).first()
+
+        if user and user.email != email:
+            raise serializers.ValidationError(
+                {'error': 'Учетные данные не верны.'})
+
+        return data
+
     def validate_username(self, value):
         username = value
 
@@ -121,7 +132,7 @@ class UserSerializer(BaseUserSerializer):
         fields = super().get_fields()
         view = self.context.get('view')
 
-        if view and view.action == 'me':
+        if view and view.action == 'change_me':
             fields['role'].read_only = True
         return fields
 
