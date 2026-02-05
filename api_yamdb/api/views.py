@@ -10,7 +10,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
-from .permissions import AdminOnly, OwnerOrReadOnly
+from .permissions import AdminOnly
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -60,24 +60,46 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
 
     def get_serializer_class(self):
-        if self.basename != 'signup_user':
+        if self.basename != 'signup':
             return UserSerializer
         return SignUpSerializer
 
     def get_permissions(self):
-        if self.basename == 'signup_user':
+        if self.basename == 'signup':
             return (permissions.AllowAny(),)
-        elif self.action == 'me':
-            return (OwnerOrReadOnly(),)
+        elif self.action in ['me', 'change_me', 'delete_for_me_not_allowed']:
+            return (permissions.IsAuthenticated(),)
         else:
             return (permissions.IsAuthenticated(), AdminOnly(),)
+
+    @action(detail=False,
+            permission_classes=(permissions.IsAuthenticated,),
+            methods=['get'],
+            url_path='me')
+    def me(self, request):
+        user = request.user
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @me.mapping.patch
+    def change_me(self, request):
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)
+
+    @me.mapping.delete
+    def delete_for_me_not_allowed(self, request):
+        """Перехватываю delete запрос, иначе его перехватит users."""
+        raise MethodNotAllowed('DELETE')
 
     def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
 
-        if self.basename == 'signup_user':
-            username = serializer.initial_data.get('username', None)
+        if self.basename == 'signup':
+            username = request.data.get('username')
             user = User.objects.filter(username=username).first()
             if serializer.is_valid():
                 username = serializer.validated_data.get('username')
@@ -93,15 +115,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 try:
                     sender_mail(code, email)
-                    return Response(
-                        serializer.data, status=200, headers=headers
-                    )
+                    return Response(serializer.data, headers=headers)
                 except Exception as e:
                     return Response(
                         {'username': username,
                          'email': email,
-                         'error': f'Письмо с кодом не отправлено: {str(e)}'},
-                        status=status.HTTP_200_OK
+                         'error': f'Письмо с кодом не отправлено: {str(e)}'}
                     )
             elif user and (
                     user.email == serializer.initial_data.get('email', None)):
@@ -110,20 +129,13 @@ class UserViewSet(viewsets.ModelViewSet):
                     sender_mail(code, user.email)
                     return Response(
                         {'username': user.username,
-                         'email': user.email},
-                        status=status.HTTP_200_OK
+                         'email': user.email}
                     )
                 except Exception as e:
                     return Response(
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
-            elif user and (
-                    user.email != serializer.initial_data.get('email', None)):
-                return Response(
-                    {'error': 'Учетные данные не верны'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
         else:
             if serializer.is_valid():
                 serializer.save()
@@ -131,28 +143,6 @@ class UserViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False,
-            permission_classes=(OwnerOrReadOnly),
-            methods=['get', 'patch', 'delete'],
-            url_path='me')
-    def me(self, request):
-        user = request.user
-
-        if request.method == 'PATCH':
-            serializer = self.get_serializer(user,
-                                             data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors,
-                                status=status.HTTP_400_BAD_REQUEST)
-        elif request.method == 'DELETE':
-            raise MethodNotAllowed('DELETE')
-
-        serializer = self.get_serializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CategoryViewSet(SlugNameViewset):
