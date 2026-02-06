@@ -8,6 +8,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
+    MAX_SCORE,
+    MIN_SCORE,
     REGEX_STAMP,
     SLUG_FIELD_LENGTH,
 )
@@ -18,14 +20,22 @@ from .utils.confirm_code import ConfirmationCodeService
 User = get_user_model()
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class NameSlugSerialiser(serializers.ModelSerializer):
+    """Базовый сериализатор для полей name и slug."""
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        fields = ('name', 'slug')
+        abstract = True
+
+
+class CategorySerializer(NameSlugSerialiser):
     """Сериализатор для категорий.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
@@ -37,40 +47,60 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Category
 
 
-class GenreSerializer(serializers.ModelSerializer):
+class GenreSerializer(NameSlugSerialiser):
     """Сериализатор для жанров.
 
     Поля:
         - name
         - slug
     """
-    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
     slug = serializers.SlugField(
         max_length=SLUG_FIELD_LENGTH,
         validators=[
             UniqueValidator(queryset=Genre.objects.all(),
-                            message='Жанр с таким slug уже существует.'),
+                            message='Такой slug уже существует.')
         ]
     )
 
-    class Meta:
-        fields = ('name', 'slug')
+    class Meta(NameSlugSerialiser.Meta):
         model = Genre
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для произведений."""
+class TitleModifySerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и изменения произведений."""
 
     genre = serializers.SlugRelatedField(slug_field='slug',
                                          queryset=Genre.objects.all(),
-                                         many=True)
+                                         many=True, required=True)
     category = serializers.SlugRelatedField(slug_field='slug',
                                             queryset=Category.objects.all())
+    name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
+
+    class Meta:
+        model = Title
+        fields = ('id', 'name', 'year', 'description',
+                  'genre', 'category')
+        read_only_fields = ('id', 'rating')
+
+    def to_representation(self, instance):
+        return TitleReadSerializer(instance, context=self.context).data
+
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Поле Жанр не может быть пустым.')
+        return value
+
+
+class TitleReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения произведений."""
+
+    genre = GenreSerializer(many=True, read_only=True)
+    category = serializers.SerializerMethodField()
     name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
 
     class Meta:
@@ -79,22 +109,17 @@ class TitleSerializer(serializers.ModelSerializer):
                   'rating', 'genre', 'category')
         read_only_fields = ('id', 'rating')
 
-    def to_representation(self, instance):
-        """Заменяет слаги на объекты"""
-
-        representation = super().to_representation(instance)
-        representation['genre'] = GenreSerializer(instance.genre.all(),
-                                                  many=True).data
-        representation['category'] = CategorySerializer(instance.category).data
-
-        return representation
+    def get_category(self, obj):
+        if obj.category is None:
+            return {'name': '', 'slug': ''}
+        return CategorySerializer(obj.category).data
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
     """Базовый сериализатор пользователей."""
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ('username', 'email')
 
     def validate_username(self, value):
         username = value
@@ -108,6 +133,17 @@ class BaseUserSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate(self, data):
+        username = data.get('username')
+        email = data.get('email')
+        user = User.objects.filter(username=username).first()
+
+        if user and user.email != email:
+            raise serializers.ValidationError(
+                {'error': 'Учетные данные не верны.'})
+
+        return data
+
 
 class UserSerializer(BaseUserSerializer):
     """Сериализатор для создания пользователей админом."""
@@ -115,7 +151,15 @@ class UserSerializer(BaseUserSerializer):
 
     class Meta(BaseUserSerializer.Meta):
         fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
+                  + ('first_name', 'last_name', 'bio', 'role'))
+
+    def get_fields(self):
+        fields = super().get_fields()
+        view = self.context.get('view')
+
+        if view and view.action == 'change_me':
+            fields['role'].read_only = True
+        return fields
 
     def validate_role(self, value):
         role = value
@@ -128,22 +172,6 @@ class UserSerializer(BaseUserSerializer):
             )
 
         return value
-
-    def get_fields(self):
-        fields = super().get_fields()
-        view = self.context.get('view')
-
-        if view and view.action == 'me':
-            fields['role'].read_only = True
-        return fields
-
-
-class UserMeSerializer(BaseUserSerializer):
-    """Сериализатор для пользователей."""
-
-    class Meta(BaseUserSerializer.Meta):
-        fields = (BaseUserSerializer.Meta.fields
-                  + ['first_name', 'last_name', 'bio', 'role'])
 
 
 class SignUpSerializer(BaseUserSerializer):
@@ -170,7 +198,7 @@ class TokenSerializer(serializers.Serializer):
 
         refresh = RefreshToken.for_user(user)
         return {
-            'access': str(refresh.access_token)
+            'token': str(refresh.access_token)
         }
 
 
@@ -179,15 +207,16 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     author = serializers.StringRelatedField(
         source='author.username', read_only=True)
-    title = serializers.PrimaryKeyRelatedField(read_only=True)
     score = serializers.IntegerField(
-        min_value=1, max_value=10,
+        min_value=MIN_SCORE, max_value=MAX_SCORE,
         error_messages={
-            'min_value': 'Оценка должна быть целым числом от 1 до 10.',
-            'max_value': 'Оценка должна быть целым числом от 1 до 10.'})
+            'min_value': f'Оценка должна быть целым числом'
+                         f'не менее {MIN_SCORE}',
+            'max_value': f'Оценка должна быть целым числом'
+                         f'не менее {MAX_SCORE}'})
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'score', 'title')
+        fields = ('id', 'text', 'author', 'pub_date', 'score')
         model = Review
 
     def validate(self, data):
@@ -198,9 +227,9 @@ class ReviewSerializer(serializers.ModelSerializer):
         view = self.context.get('view')
         if request.method == 'POST':
             title_id = view.kwargs.get('title_id')
-            reviewer = Review.objects.filter(
+            review = Review.objects.filter(
                 author=request.user, title_id=title_id)
-            if reviewer.exists():
+            if review.exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение.')
 
@@ -210,10 +239,12 @@ class ReviewSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для комментариев к отзывам."""
 
-    author = serializers.StringRelatedField(
-        source='author.username', read_only=True)
-    review = serializers.PrimaryKeyRelatedField(read_only=True)
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True,
+        many=False
+    )
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'review')
+        fields = ('id', 'text', 'author', 'pub_date')
         model = Comment

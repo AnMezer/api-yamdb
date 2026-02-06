@@ -3,25 +3,23 @@ from rest_framework.pagination import LimitOffsetPagination
 
 from .permissions import (
     AdminOnly,
-    ListReadOnly,
     ModeratorOrOwnerOrReadOnly,
-    ReadOnly,
 )
 
 
-class BaseViewset(viewsets.GenericViewSet):
-    """Базовый вьюсет для вьюсетов"""
+class PaginationViewset(viewsets.GenericViewSet):
+    """Добавляет пагинацию."""
     pagination_class = LimitOffsetPagination
 
 
-class AdminOnlyViewset(BaseViewset):
+class AdminOnlyViewset(PaginationViewset):
     """Базовый вьюсет для вьюсетов с доступом только администратору"""
-    permission_classes = (AdminOnly,)
+    permission_classes = (permissions.IsAuthenticated, AdminOnly,)
 
 
-class CategoryGenreViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
-                           mixins.DestroyModelMixin, AdminOnlyViewset):
-    """Базовый вьюсет для категорий и жанров"""
+class SlugNameViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
+                      mixins.DestroyModelMixin, AdminOnlyViewset):
+    """Базовый вьюсет для моделей с полями 'name' и 'slug'."""
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
@@ -29,12 +27,12 @@ class CategoryGenreViewset(mixins.ListModelMixin, mixins.CreateModelMixin,
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action == 'list':
-            return (ListReadOnly(),)
+            return (permissions.IsAuthenticatedOrReadOnly(),)
         return super().get_permissions()
 
 
-class BaseTitleViewset(viewsets.ModelViewSet, AdminOnlyViewset):
-    """Базовый вьюсет для произведений"""
+class RestrictedMethodsViewset(viewsets.ModelViewSet, AdminOnlyViewset):
+    """Базовый вьюсет ограниченный по методам."""
     http_method_names = ['get', 'post', 'patch', 'delete']
 
 
@@ -47,7 +45,7 @@ class ReviewCommentViewset(viewsets.ModelViewSet):
     def get_permissions(self):
         """Устанавливает права доступа"""
         if self.action == 'list':
-            return (ReadOnly(),)
-        elif self.action in ['update', 'partial_update', 'destroy']:
+            return (permissions.IsAuthenticatedOrReadOnly(),)
+        elif self.action in ('update', 'partial_update', 'destroy'):
             return (ModeratorOrOwnerOrReadOnly(),)
         return super().get_permissions()
