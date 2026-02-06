@@ -3,7 +3,6 @@ from django.db import models
 
 from constants.constants import CHAR_FIELD_LENGTH, SLUG_FIELD_LENGTH
 
-
 User = get_user_model()
 
 

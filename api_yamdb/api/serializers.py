@@ -1,4 +1,3 @@
-from ast import Name
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from django.shortcuts import get_object_or_404
@@ -9,6 +8,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from constants.constants import (
     CHAR_FIELD_LENGTH,
     FORBIDDEN_USERNAME,
+    MAX_SCORE,
+    MIN_SCORE,
     REGEX_STAMP,
     SLUG_FIELD_LENGTH,
 )
@@ -88,12 +89,18 @@ class TitleModifySerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         return TitleReadSerializer(instance, context=self.context).data
 
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Поле Жанр не может быть пустым.')
+        return value
+
 
 class TitleReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения произведений."""
 
     genre = GenreSerializer(many=True, read_only=True)
-    category = CategorySerializer(read_only=True)
+    category = serializers.SerializerMethodField()
     name = serializers.CharField(max_length=CHAR_FIELD_LENGTH)
 
     class Meta:
@@ -101,6 +108,11 @@ class TitleReadSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'year', 'description',
                   'rating', 'genre', 'category')
         read_only_fields = ('id', 'rating')
+
+    def get_category(self, obj):
+        if obj.category is None:
+            return {'name': '', 'slug': ''}
+        return CategorySerializer(obj.category).data
 
 
 class BaseUserSerializer(serializers.ModelSerializer):
@@ -186,7 +198,7 @@ class TokenSerializer(serializers.Serializer):
 
         refresh = RefreshToken.for_user(user)
         return {
-            'access': str(refresh.access_token)
+            'token': str(refresh.access_token)
         }
 
 
@@ -195,15 +207,16 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     author = serializers.StringRelatedField(
         source='author.username', read_only=True)
-    title = serializers.PrimaryKeyRelatedField(read_only=True)
     score = serializers.IntegerField(
-        min_value=1, max_value=10,
+        min_value=MIN_SCORE, max_value=MAX_SCORE,
         error_messages={
-            'min_value': 'Оценка должна быть целым числом от 1 до 10.',
-            'max_value': 'Оценка должна быть целым числом от 1 до 10.'})
+            'min_value': f'Оценка должна быть целым числом'
+                         f'не менее {MIN_SCORE}',
+            'max_value': f'Оценка должна быть целым числом'
+                         f'не менее {MAX_SCORE}'})
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'score', 'title')
+        fields = ('id', 'text', 'author', 'pub_date', 'score')
         model = Review
 
     def validate(self, data):
@@ -231,8 +244,7 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only=True,
         many=False
     )
-    review = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'review')
+        fields = ('id', 'text', 'author', 'pub_date')
         model = Comment
