@@ -2,12 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from constants.constants import (
-    CHAR_FIELD_LENGTH,
-    FORBIDDEN_USERNAME,
-    MIN_SCORE,
-    MAX_SCORE
-)
+from constants.constants import CHAR_FIELD_LENGTH, MAX_SCORE, MIN_SCORE
 
 from .base_models import NameSlugBaseModel, PublicationBaseModel
 from .validators import validate_current_year

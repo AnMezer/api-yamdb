@@ -1,15 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
-from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
 
+from .filters import TitleFilter
 from .permissions import AdminOnly
 from .serializers import (
     CategorySerializer,
@@ -17,19 +18,18 @@ from .serializers import (
     GenreSerializer,
     ReviewSerializer,
     SignUpSerializer,
+    TitleModifySerializer,
+    TitleReadSerializer,
     TokenSerializer,
     UserSerializer,
-    TitleReadSerializer,
-    TitleModifySerializer,
 )
 from .services.email import sender_mail
 from .utils.confirm_code import ConfirmationCodeService
 from .viewsets import (
     RestrictedMethodsViewset,
-    SlugNameViewset,
     ReviewCommentViewset,
+    SlugNameViewset,
 )
-from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -139,7 +139,7 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.validated_data,
+                return Response(serializer.data,
                                 status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
