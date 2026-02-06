@@ -129,7 +129,3 @@ EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 
 SENDERS_EMAIL = 'notificator@yamd.net'
-
-CONFIRMATION_CODES_EXPAIRED_HOUR_COUNT = 1
-
-MAX_AUTHORIZATION_ATTEMPTS = 3
