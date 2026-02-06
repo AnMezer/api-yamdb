@@ -2,9 +2,14 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from constants.constants import CHAR_FIELD_LENGTH
+from constants.constants import (
+    CHAR_FIELD_LENGTH,
+    FORBIDDEN_USERNAME,
+    MIN_SCORE,
+    MAX_SCORE
+)
 
-from .base_models import NameSlugBaseModel
+from .base_models import NameSlugBaseModel, PublicationBaseModel
 from .validators import validate_current_year
 
 User = get_user_model()
@@ -49,49 +54,41 @@ class Title(models.Model):
         return f'{self.name} ({self.year})'
 
 
-class Review(models.Model):
+class Review(PublicationBaseModel):
     """Класс для работы с отзывами на произведения."""
 
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reviews')
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     # Оценка произведению - целое число от 1 до 10.
-    score = models.IntegerField(validators=[MinValueValidator(1),
-                                            MaxValueValidator(10)])
+    score = models.PositiveSmallIntegerField(
+        'Оценка',
+        validators=[MinValueValidator(MIN_SCORE),
+                    MaxValueValidator(MAX_SCORE)]
+    )
     # На одно произведение пользователь может оставить только один отзыв.
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='reviews')
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Название произведения'
+    )
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(PublicationBaseModel.Meta):
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
-        constraints = [
-            models.UniqueConstraint(
-                fields=('title', 'author', ),
-                name='unique review'
-            )
+        constraints = [models.UniqueConstraint(
+            fields=('title', 'author'), name='unique review')
         ]
 
-    def __str__(self):
-        return self.text
 
-
-class Comment(models.Model):
+class Comment(PublicationBaseModel):
     """Класс для работы с комментариями на отзывы пользователей."""
 
-    text = models.TextField()
-    author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments')
-    pub_date = models.DateTimeField('Дата публикации', auto_now_add=True)
     review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments')
+        Review,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Комментарий'
+    )
 
-    class Meta:
-        ordering = ('-pub_date', )
+    class Meta(PublicationBaseModel.Meta):
         verbose_name = 'комментарий'
         verbose_name_plural = 'комментарии'
-
-    def __str__(self):
-        return self.text
