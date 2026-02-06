@@ -191,7 +191,7 @@ class TokenSerializer(serializers.Serializer):
             code.save()
             refresh = RefreshToken.for_user(user)
             return {
-                'access': str(refresh.access_token)
+                'token': str(refresh.access_token)
             }
         code.is_used = True
         code.save()
