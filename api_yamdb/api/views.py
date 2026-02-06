@@ -9,6 +9,7 @@ from rest_framework_simplejwt import views as simplejwtviews
 from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Review, Title
+from users.models import VerifyCode
 
 from .permissions import AdminOnly
 from .serializers import (
@@ -23,7 +24,7 @@ from .serializers import (
     TitleModifySerializer,
 )
 from .services.email import sender_mail
-from .utils.confirm_code import ConfirmationCodeService
+from .utils.confirm_code import GeneratingCodeService
 from .viewsets import (
     RestrictedMethodsViewset,
     SlugNameViewset,
@@ -42,13 +43,10 @@ class TokenView(simplejwtviews.TokenViewBase):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             return Response(
-                serializer.validated_data,
-                status=status.HTTP_200_OK
+                serializer.validated_data
             )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -109,7 +107,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 serializer.save()
 
                 user = User.objects.filter(username=username).first()
-                code = ConfirmationCodeService.generate_code(user)
+                code = GeneratingCodeService.generate_code()
+
+                VerifyCode.objects.create(user=user, code=code)
 
                 headers = self.get_success_headers(serializer.data)
 
@@ -125,12 +125,19 @@ class UserViewSet(viewsets.ModelViewSet):
             elif user and (
                     user.email == serializer.initial_data.get('email', None)):
                 try:
-                    code = ConfirmationCodeService.generate_code(user)
+                    code = VerifyCode.objects.filter(
+                        user=user, is_used=False).values('code')
+                    if not code:
+                        code = GeneratingCodeService.generate_code()
+                        VerifyCode.objects.create(user=user, code=code)
+
                     sender_mail(code, user.email)
+
                     return Response(
                         {'username': user.username,
-                         'email': user.email}
+                            'email': user.email}
                     )
+
                 except Exception as e:
                     return Response(
                         {'error': f'Письмо с кодом не отправлено: {str(e)}'},
