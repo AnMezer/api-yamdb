@@ -24,7 +24,7 @@ from .serializers import (
     TitleModifySerializer,
 )
 from .services.email import sender_mail
-from .utils.confirm_code import GeneratingCodeService
+from .utils.code_generator import GeneratingCodeService
 from .viewsets import (
     RestrictedMethodsViewset,
     SlugNameViewset,
