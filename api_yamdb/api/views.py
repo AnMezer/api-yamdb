@@ -27,8 +27,8 @@ from .serializers import (
 from .services.email import sender_mail
 from .utils.code_generator import GeneratingCodeService
 from .viewsets import (
-    RestrictedMethodsViewset,
     PublicationViewset,
+    RestrictedMethodsViewset,
     SlugNameViewset,
 )
 
