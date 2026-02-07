@@ -28,7 +28,7 @@ from .services.email import sender_mail
 from .utils.code_generator import GeneratingCodeService
 from .viewsets import (
     RestrictedMethodsViewset,
-    ReviewCommentViewset,
+    PublicationViewset,
     SlugNameViewset,
 )
 
@@ -187,7 +187,7 @@ class TitleViewSet(RestrictedMethodsViewset):
         return super().get_permissions()
 
 
-class ReviewViewSet(ReviewCommentViewset):
+class ReviewViewSet(PublicationViewset):
     """Вьюсет для работы с отзывами к произведению <title_id>."""
 
     serializer_class = ReviewSerializer
@@ -209,7 +209,7 @@ class ReviewViewSet(ReviewCommentViewset):
         serializer.save(author=self.request.user, title=title)
 
 
-class CommentViewSet(ReviewCommentViewset):
+class CommentViewSet(PublicationViewset):
     """Вьюсет для работы с комментариями к отзыву <review_id>."""
 
     serializer_class = CommentSerializer
