@@ -17,10 +17,14 @@ class ModeratorOrOwnerOrReadOnly(CustomBasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        super().has_object_permission(request, view, obj)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
         return (
             request.user == obj.author
-            or request.user.is_moder
+            or request.user.is_superuser
+            or request.user.role == User.Role.ADMIN
+            or request.user.role == User.Role.MODER
         )
 
 
