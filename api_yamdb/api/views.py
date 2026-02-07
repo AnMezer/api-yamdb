@@ -98,7 +98,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if self.basename == 'signup':
             username = request.data.get('username')
-            user = User.objects.filter(username=username).first()
             if serializer.is_valid():
                 username = serializer.validated_data.get('username')
 
@@ -122,27 +121,31 @@ class UserViewSet(viewsets.ModelViewSet):
                          'email': email,
                          'error': f'Письмо с кодом не отправлено: {str(e)}'}
                     )
-            elif user and (
-                    user.email == serializer.initial_data.get('email', None)):
-                try:
-                    code = VerifyCode.objects.filter(
-                        user=user, is_used=False).values('code')
-                    if not code:
-                        code = GeneratingCodeService.generate_code()
-                        VerifyCode.objects.create(user=user, code=code)
+            else:
+                user = User.objects.filter(username=username).first()
+                if user and (
+                        user.email == serializer.initial_data.get('email',
+                                                                  None)):
+                    try:
+                        code = VerifyCode.objects.filter(
+                            user=user, is_used=False).values('code')
+                        if not code:
+                            code = GeneratingCodeService.generate_code()
+                            VerifyCode.objects.create(user=user, code=code)
 
-                    sender_mail(code, user.email)
+                        sender_mail(code, user.email)
 
-                    return Response(
-                        {'username': user.username,
-                            'email': user.email}
-                    )
+                        return Response(
+                            {'username': user.username,
+                                'email': user.email}
+                        )
 
-                except Exception as e:
-                    return Response(
-                        {'error': f'Письмо с кодом не отправлено: {str(e)}'},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE
-                    )
+                    except Exception as e:
+                        return Response(
+                            {'error': (
+                                f'Письмо с кодом не отправлено: {str(e)}')},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE
+                        )
         else:
             if serializer.is_valid():
                 serializer.save()
