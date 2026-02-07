@@ -23,16 +23,16 @@ class GenresAdmin(CategoriesGenresAdmin):
 
 
 @admin.register(Title)
-class TitlesAdmin(admin.ModelAdmin):
+class TitleAdmin(admin.ModelAdmin):
     list_display = ('name', 'year', 'rating', 'description', 'get_genres')
     list_filter = ('genre', 'category', 'rating')
     search_fields = ('name', 'slug')
     filter_horizontal = ('genre',)
 
+    @admin.display(description='Жанры')
     def get_genres(self, obj):
         """Вывод жанров через запятую."""
-        return ', '.join([genre.name for genre in obj.genre.all()])
-    get_genres.short_description = 'Жанры'
+        return list(obj.genre.values_list('name', flat=True))
 
 
 @admin.register(Review)

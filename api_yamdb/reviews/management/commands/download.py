@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.db import connection, transaction
 from django.db.models.base import ModelBase
 
-from reviews.models import User
+from users.models import User
 
 from .exceptions import CantDeleteDataError, ModelNotFoundError
 
@@ -144,7 +144,10 @@ class Command(BaseCommand):
         Raises:
             CantDeleteData: В случае ошибки при удалении.
         """
-        table_name = f'{app}_{table}'
+        if table == 'user':
+            table_name = 'users_user'
+        else:
+            table_name = f'{app}_{table}'
         querys = [
             # Очищает данные в таблице
             f'DELETE FROM {table_name}',
@@ -204,8 +207,10 @@ class Command(BaseCommand):
 
             try:
                 file_path = os.path.join(options['path'], f'{table}.csv')
-
-                model = self.get_model(options['app'], table)
+                if table == 'user':
+                    model = self.get_model('users', table)
+                else:
+                    model = self.get_model(options['app'], table)
 
                 with open(file_path, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f, delimiter=options['splitter'])
