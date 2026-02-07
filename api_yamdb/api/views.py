@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt import views as simplejwtviews
 
 from reviews.models import Category, Genre, Review, Title
+from users.models import VerifyCode
 
 from .filters import TitleFilter
 from .permissions import AdminOnly
@@ -24,7 +25,7 @@ from .serializers import (
     UserSerializer,
 )
 from .services.email import sender_mail
-from .utils.confirm_code import ConfirmationCodeService
+from .utils.code_generator import GeneratingCodeService
 from .viewsets import (
     RestrictedMethodsViewset,
     PublicationViewset,
@@ -42,13 +43,10 @@ class TokenView(simplejwtviews.TokenViewBase):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             return Response(
-                serializer.validated_data,
-                status=status.HTTP_200_OK
+                serializer.validated_data
             )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -100,7 +98,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if self.basename == 'signup':
             username = request.data.get('username')
-            user = User.objects.filter(username=username).first()
             if serializer.is_valid():
                 username = serializer.validated_data.get('username')
 
@@ -109,7 +106,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 serializer.save()
 
                 user = User.objects.filter(username=username).first()
-                code = ConfirmationCodeService.generate_code(user)
+                code = GeneratingCodeService.generate_code()
+
+                VerifyCode.objects.create(user=user, code=code)
 
                 headers = self.get_success_headers(serializer.data)
 
@@ -122,20 +121,31 @@ class UserViewSet(viewsets.ModelViewSet):
                          'email': email,
                          'error': f'Письмо с кодом не отправлено: {str(e)}'}
                     )
-            elif user and (
-                    user.email == serializer.initial_data.get('email', None)):
-                try:
-                    code = ConfirmationCodeService.generate_code(user)
-                    sender_mail(code, user.email)
-                    return Response(
-                        {'username': user.username,
-                         'email': user.email}
-                    )
-                except Exception as e:
-                    return Response(
-                        {'error': f'Письмо с кодом не отправлено: {str(e)}'},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE
-                    )
+            else:
+                user = User.objects.filter(username=username).first()
+                if user and (
+                        user.email == serializer.initial_data.get('email',
+                                                                  None)):
+                    try:
+                        code = VerifyCode.objects.filter(
+                            user=user, is_used=False).values('code')
+                        if not code:
+                            code = GeneratingCodeService.generate_code()
+                            VerifyCode.objects.create(user=user, code=code)
+
+                        sender_mail(code, user.email)
+
+                        return Response(
+                            {'username': user.username,
+                                'email': user.email}
+                        )
+
+                    except Exception as e:
+                        return Response(
+                            {'error': (
+                                f'Письмо с кодом не отправлено: {str(e)}')},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE
+                        )
         else:
             if serializer.is_valid():
                 serializer.save()

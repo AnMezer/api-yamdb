@@ -15,8 +15,6 @@ from constants.constants import (
 )
 from reviews.models import Category, Comment, Genre, Review, Title
 
-from .utils.confirm_code import ConfirmationCodeService
-
 User = get_user_model()
 
 
@@ -190,16 +188,33 @@ class TokenSerializer(serializers.Serializer):
         confirmation_code = attrs.get('confirmation_code')
 
         user = get_object_or_404(User, username=username)
-
-        if not ConfirmationCodeService.verify_code(user, confirmation_code):
+        if not user:
+            raise serializers.ValidationError(
+                {'detail': 'Пользователь не найден'}
+            )
+        code = user.confirmation_code.filter(is_used=False).first()
+        if not code or confirmation_code != code.code:
+            if code:
+                code.increase_attempts
             raise serializers.ValidationError(
                 {'confirmation_code': 'Неверный код'}
             )
-
-        refresh = RefreshToken.for_user(user)
-        return {
-            'token': str(refresh.access_token)
-        }
+        if code.is_valid:
+            code.is_used = True
+            code.save()
+            refresh = RefreshToken.for_user(user)
+            return {
+                'token': str(refresh.access_token)
+            }
+        code.is_used = True
+        code.save()
+        raise serializers.ValidationError(
+            {
+                'confirmation_code': (
+                    'Попытки входа с таким кодом '
+                    'запрещены, запросите новый код.')
+            }
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):

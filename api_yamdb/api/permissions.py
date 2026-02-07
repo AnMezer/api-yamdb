@@ -4,13 +4,13 @@ from rest_framework import permissions
 User = get_user_model()
 
 
-class CustomBasePermission(permissions.BasePermission):
+class BasePermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.method in permissions.SAFE_METHODS
 
 
-class ModeratorOrOwnerOrReadOnly(CustomBasePermission):
+class ModeratorOrOwnerOrReadOnly(BasePermission):
 
     def has_permission(self, request, view):
         super().has_permission(request, view)
@@ -32,6 +32,3 @@ class AdminOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_admin
-
-    def has_object_permission(self, request, view, obj):
-        return self.has_permission(request, view)
