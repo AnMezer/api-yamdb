@@ -36,8 +36,9 @@ class RestrictedMethodsViewset(viewsets.ModelViewSet, AdminOnlyViewset):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
 
-class ReviewCommentViewset(viewsets.ModelViewSet):
-    """Базовый вьюсет для отзывов и комментов"""
+class PublicationViewset(viewsets.ModelViewSet):
+    """Базовый вьюсет для публикаций разного рода."""
+
     pagination_class = LimitOffsetPagination
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
     http_method_names = ['get', 'post', 'patch', 'delete']
