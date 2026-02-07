@@ -63,6 +63,10 @@ class VerifyCode(models.Model):
     failed_attempt = models.IntegerField(default=ATTEMPT)
     is_used = models.BooleanField(default=False)
 
+    class Meta:
+        verbose_name = 'Код доступа'
+        verbose_name_plural = 'Коды доступа'
+
     def save(self, *args, **kwargs):
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(
