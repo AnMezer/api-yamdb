@@ -6,11 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from constants.constants import (
-    CHAR_FIELD_LENGTH,
-    FORBIDDEN_USERNAME,
-    ATTEMPT
-)
+from constants.constants import ATTEMPT, CHAR_FIELD_LENGTH, FORBIDDEN_USERNAME
 
 
 class User(AbstractUser):
