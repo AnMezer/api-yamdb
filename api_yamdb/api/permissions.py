@@ -4,13 +4,7 @@ from rest_framework import permissions
 User = get_user_model()
 
 
-class BasePermission(permissions.BasePermission):
-
-    def has_permission(self, request, view):
-        return request.method in permissions.SAFE_METHODS
-
-
-class ModeratorOrOwnerOrReadOnly(BasePermission):
+class ModeratorOrOwnerOrReadOnly(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_authenticated
